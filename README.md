@@ -1,6 +1,8 @@
-# AI Frameworks
+# AI Frameworks 🤖
 
 ## project setup
-- `dataset` contains the training set images collected by the class 
-- `scripts` contains the each python script that contains a module that main can run based upon the arguments provided 
+- `lib/API` contains basic interfaces to hide how each method of face detection is implemented
+- `lib/face_detection`
+- `lib/face_representation`
+- `lib/face_classification`
  
