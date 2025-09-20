@@ -1,0 +1,6 @@
+[DEBUG][2025-09-19 08:45:54,739] - Logging initialized. Log file: C:\Users\ennis\Documents\Financien_Werk_OV\my_works\Courses TM\2025-2026\Semester 1\AIFrameworks\logs\script_log_20250919_084554.log
+[DEBUG][2025-09-19 08:45:54,739] - Verbose mode enabled
+[DEBUG][2025-09-19 08:45:58,622] - Initialized ViolaJones with input image: C:\Users\ennis\Documents\Financien_Werk_OV\my_works\Courses TM\2025-2026\Semester 1\AIFrameworks\dataset\input\group_photo.jpg, output directory: C:\Users\ennis\Documents\Financien_Werk_OV\my_works\Courses TM\2025-2026\Semester 1\AIFrameworks\dataset\output, cascade type: FRONTALFACE_DEFAULT
+[DEBUG][2025-09-19 08:46:02,208] - Detected 21 faces
+[INFO][2025-09-19 08:46:02,255] - Output image saved to C:\Users\ennis\Documents\Financien_Werk_OV\my_works\Courses TM\2025-2026\Semester 1\AIFrameworks\dataset\output\group_photo_viola_jones_output.jpg
+[DEBUG][2025-09-19 08:46:15,655] - Initialized ViolaJones with input image: C:\Users\ennis\Documents\Financien_Werk_OV\my_works\Courses TM\2025-2026\Semester 1\AIFrameworks\dataset\input\group_photo.jpg, output directory: C:\Users\ennis\Documents\Financien_Werk_OV\my_works\Courses TM\2025-2026\Semester 1\AIFrameworks\dataset\output, cascade type: FRONTALFACE_DEFAULT

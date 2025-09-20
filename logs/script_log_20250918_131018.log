@@ -1,0 +1,17 @@
+[DEBUG][2025-09-18 13:10:18,244] - Logging initialized. Log file: C:\Users\ennis\Documents\Financien_Werk_OV\my_works\Courses TM\2025-2026\Semester 1\AIFrameworks\logs\script_log_20250918_131018.log
+[DEBUG][2025-09-18 13:10:18,251] - Parsed command line arguments
+[DEBUG][2025-09-18 13:10:18,251] - Command line arguments: []
+[DEBUG][2025-09-18 13:10:18,251] - Configuration loaded from C:\Users\ennis\Documents\Financien_Werk_OV\my_works\Courses TM\2025-2026\Semester 1\AIFrameworks\config.toml
+[DEBUG][2025-09-18 13:10:18,252] - Configuration content:
+{'settings': {'data_path': 'dataset/',
+              'input_path': 'dataset/input/',
+              'log_path': 'logs/',
+              'model_path': 'models/',
+              'output_path': 'dataset/output/'}}
+[DEBUG][2025-09-18 13:10:18,252] - Verbose mode enabled.
+[INFO][2025-09-18 13:10:18,252] - Script started...
+[DEBUG][2025-09-18 13:10:22,634] - Initialized ViolaJones with input image: , output image: , cascade type: CascadeType.FRONTALFACE_DEFAULT
+[ERROR][2025-09-18 13:10:32,459] - Invalid file path. Please try again.
+[INFO][2025-09-18 13:10:46,318] - Input image set to: C:\Users\ennis\Documents\Financien_Werk_OV\my_works\Courses TM\2025-2026\Semester 1\AIFrameworks\dataset\input\group_photo_2.jpg
+[DEBUG][2025-09-18 13:11:02,492] - Detected 25 faces
+[INFO][2025-09-18 13:11:02,493] - Output image saved to C:\Users\ennis\Documents\Financien_Werk_OV\my_works\Courses TM\2025-2026\Semester 1\AIFrameworks\scripts\face_detection\dataset\output\group_photo_2_viola_jones_output.jpg

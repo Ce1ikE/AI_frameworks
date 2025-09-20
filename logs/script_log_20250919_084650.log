@@ -1,0 +1,3 @@
+[DEBUG][2025-09-19 08:46:50,521] - Logging initialized. Log file: C:\Users\ennis\Documents\Financien_Werk_OV\my_works\Courses TM\2025-2026\Semester 1\AIFrameworks\logs\script_log_20250919_084650.log
+[DEBUG][2025-09-19 08:46:50,521] - Verbose mode enabled
+[DEBUG][2025-09-19 08:46:53,743] - Initialized ViolaJones with input image: C:\Users\ennis\Documents\Financien_Werk_OV\my_works\Courses TM\2025-2026\Semester 1\AIFrameworks\dataset\input\group_photo.jpg, output directory: C:\Users\ennis\Documents\Financien_Werk_OV\my_works\Courses TM\2025-2026\Semester 1\AIFrameworks\dataset\output, cascade type: FRONTALFACE_DEFAULT

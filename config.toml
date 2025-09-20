@@ -1,0 +1,8 @@
+# https://toml.io/en/
+
+[settings]
+dataset_dir = "dataset"
+input_dir = "dataset/input"
+output_dir = "dataset/output"
+log_dir = "logs"
+model_dir = "models"
