@@ -7,42 +7,24 @@ class PathManager:
     logger = logging.getLogger(__name__)
 
     def __init__(self, entrypoint: str):
-        try:
-            self.m_entrypoint_dir = Path(entrypoint).resolve().parent
-        except Exception as e:
-            message = f"Failed to resolve entrypoint directory: {e}"
-            self.logger.error(message)
-            raise RuntimeError(message)
-        
+        self.entrypoint_dir = Path(entrypoint).resolve().parent
         self.dataset = None
         self.input = None
         self.output = None
         self.logs = None
         self.models = None
     
-    def initialize(self, config):
+    def resolve_dirs(self, config: dict):
         try:
-            self.run_health_checks(config)
-            self.logger.info("All required directories are present.")
-        except Exception as e:
-            message = f"Initialization failed: {e}"
-            self.logger.error(message)
-            raise RuntimeError(message)
+            self.dataset = Path(self.entrypoint_dir / config["settings"]["dataset_dir"]).resolve()
+            self.input   = Path(self.entrypoint_dir / config["settings"]["input_dir"]).resolve()
+            self.output  = Path(self.entrypoint_dir / config["settings"]["output_dir"]).resolve()
+            self.logs    = Path(self.entrypoint_dir / config["settings"]["log_dir"]).resolve()
+            self.models  = Path(self.entrypoint_dir / config["settings"]["model_dir"]).resolve()
 
-    def run_health_checks(self, config):        
-        for rel_path in config["settings"].values():
-            if not Path(self.m_entrypoint_dir / rel_path).is_dir():
-                message = f"Required directory not found: {rel_path}"
-                self.logger.error(message)
-                raise FileNotFoundError(message)
-
-        try:
-            self.dataset = Path(self.m_entrypoint_dir / config["settings"]["dataset_dir"])
-            self.input   = Path(self.m_entrypoint_dir / config["settings"]["input_dir"])
-            self.output  = Path(self.m_entrypoint_dir / config["settings"]["output_dir"])
-            self.logs    = Path(self.m_entrypoint_dir / config["settings"]["log_dir"])
-            self.models  = Path(self.m_entrypoint_dir / config["settings"]["model_dir"])
+            for p in [self.dataset, self.input, self.output, self.logs, self.models]:
+                p.mkdir(parents=True, exist_ok=True)
+            self.logger.info("All required directories resolved and ensured.")
         except KeyError as e:
-            message = f"Missing configuration key: {e}"
-            self.logger.error(message)
-            raise ValueError(message)
+            raise ValueError(f"Missing configuration key: {e}")
+  

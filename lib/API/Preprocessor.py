@@ -6,6 +6,8 @@ class Preprocessor:
         self.target_size = target_size
 
     def load(self, image_path: Path):
+        if not image_path.is_file():
+            raise FileNotFoundError(f"Image file not found: {image_path}")
         return cv2.imread(image_path.as_posix())
     
     def crop(self, image, bbox):
