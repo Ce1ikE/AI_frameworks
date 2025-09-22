@@ -1,0 +1,76 @@
+
+ONNX : Open Neural Network Exchange
+# https://learn.microsoft.com/en-us/azure/machine-learning/concept-onnx?view=azureml-api-2
+# https://huggingface.co/blog/ngxson/common-ai-model-formats#:~:text=The%20PyTorch%20format%20can%20be,such%20as%20GGUF%20and%20Safetensors.
+# https://onnxruntime.ai/docs/get-started/with-python.html#quickstart-examples-for-pytorch-tensorflow-and-scikit-learn
+
+!! inspect ONNX:
+# https://netron.app/
+
+little bit of history
+# https://learnopencv.com/what-is-face-detection-the-ultimate-guide/
+
+about anchors
+# https://towardsdatascience.com/anchor-boxes-the-key-to-quality-object-detection-ddf9d612d4f9/
+# https://www.mathworks.com/help/vision/ug/anchor-boxes-for-object-detection.html
+
+MODELS + ALGORITHMS's:
+======================
+
+# https://medium.com/pythons-gurus/what-is-the-best-face-detector-ab650d8c1225
+
+Viola Jones 
+# https://realpython.com/traditional-face-detection-python/
+# https://www.youtube.com/watch?v=uEJ71VlUmMQ&t=491s
+# https://pyimagesearch.com/2018/06/18/face-recognition-with-opencv-python-and-deep-learning/
+# https://docs.opencv.org/3.4/db/d28/tutorial_cascade_classifier.html
+# https://jakevdp.github.io/PythonDataScienceHandbook/05.14-image-features.html
+
+HOG
+# https://medium.com/@turgay2317/people-detection-with-hog-algorithm-in-python-4fbd42e83b46
+# https://docs.opencv.org/4.x/d5/d33/structcv_1_1HOGDescriptor.html#details
+
+haarcascade files can be found at the OpenCV repository:
+# https://github.com/opencv/opencv/blob/master/data/haarcascades/
+
+InsightFace: 2D and 3D Face Analysis Project
+# https://github.com/deepinsight/insightface
+
+arcface    --> face embedding (generates 128D–512D embeddings for recognition/classification)
+genderage  --> auxiliary model (predicts gender & age from face crops)
+RetinaFace --> face detection (bounding boxes + landmarks + confidence)
+SCRFD      --> alternative face detection models (optimized for speed/size)
+
+ONNX Model Zoo
+# https://github.com/onnx/models
+# https://huggingface.co/onnxmodelzoo
+
+ArcFace
+# https://huggingface.co/onnx-community/arcface-onnx
+# https://yakhyo.github.io/facial-analysis/
+
+RetinaFace
+# https://medium.com/axinc-ai/retinaface-a-face-detection-model-designed-for-high-resolution-6c3900771a01
+# https://arxiv.org/abs/1905.00641
+# https://github.com/discipleofhamilton/RetinaFace/tree/master
+# https://medium.com/analytics-vidhya/exploring-other-face-detection-approaches-part-1-retinaface-9b00f453fd15
+
+SCRFD
+# https://arxiv.org/abs/2105.04714
+
+MTCNN
+# https://arxiv.org/abs/1604.02878
+
+SSD
+# https://jonathan-hui.medium.com/ssd-object-detection-single-shot-multibox-detector-for-real-time-processing-9bd8deac0e06
+# https://www.geeksforgeeks.org/computer-vision/how-single-shot-detector-ssd-works/
+
+YuNet
+# https://huggingface.co/opencv/face_detection_yunet/tree/main
+
+YOLO
+# https://medium.com/@zain.18j2000/how-to-use-your-yolov11-model-with-onnx-runtime-69f4ea243c01
+# https://www.v7labs.com/blog/yolo-object-detection
+# https://docs.ultralytics.com/
+# https://docs.ultralytics.com/integrations/onnx/
+# https://pytorch.org/hub/ultralytics_yolov5/

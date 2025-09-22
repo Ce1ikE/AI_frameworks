@@ -1,5 +1,3 @@
-# https://toml.io/en/
-
 [settings]
 dataset_dir = "dataset"
 input_dir = "dataset/input"

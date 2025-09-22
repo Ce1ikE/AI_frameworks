@@ -4,3 +4,16 @@
 *.pyo
 *.pyd
 *.log
+*.jpg
+*.jpeg
+*.png
+*.gif
+*.zip
+*.json
+*.csv
+*.python-version
+uv.lock
+
+/models
+*.pth
+*.onnx
