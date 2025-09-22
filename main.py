@@ -1,39 +1,45 @@
-from pathlib import Path
+from zipfile import Path
 from lib.API.PathManager import PathManager
-from lib.API.Reporter import Reporter , OutputFormat
-from lib.API.Preprocessor import Preprocessor
-from lib.face_detection.ViolaJones import ViolaJones
-from lib.face_detection.CascadeType import CascadeType
-from lib.API.FaceEmbedder import FaceEmbedder
 from lib.API.Pipeline import Pipeline
-from lib.Core import Core 
+from lib.API.Reporter import Reporter , OutputFormat
 
+from lib.face_detection.ViolaJones import ViolaJonesDetector , CascadeType
+from lib.face_detection.RetinaFace import RetinaFaceDetector
+from lib.face_detection.SCRFD import SCRFDDetector
+from lib.face_detection.HoG import HoGDetector
+from lib.face_detection.YuNet import YuNetDetector
+
+from lib.face_representation.ArcFace import ArcFaceEmbedder
+
+from uniface.constants import RetinaFaceWeights
+
+from lib.Core import Core 
 
 def main():
 
-    path_manager = PathManager(entrypoint=__file__)
+    path_manager = PathManager(entrypoint=__file__, config="config.toml")
     core = Core(path_manager)
     
-    path_manager.resolve_dirs(core.m_config)
+    input_files = path_manager.input.glob("*.jpg")
+    
+    for input_image_path in input_files:
+        Pipeline(
+            detector=RetinaFaceDetector(
+                model_path=RetinaFaceWeights.MNET_025,
+                confidence_threshold=0.6
+            ),
+            embedder=ArcFaceEmbedder(
+                model_path=path_manager.models / "arcface" / "w600k_mbf.onnx"
+            ),
+            reporter=Reporter(
+                output_dir=path_manager.output,
+                save_original_image=True,
+                save_to_file=True,
+                save_format=OutputFormat.CSV,
+                save_cropped_faces=True,
+            )
+        ).run(input_image_path.resolve())
 
-    pipeline = Pipeline(
-        face_detector=ViolaJones(
-            cascade_type=CascadeType.FRONTALFACE_DEFAULT
-        ),
-        face_embedder=None,
-        preprocessor=Preprocessor(
-            target_size=(160,160)
-        ),
-        reporter=Reporter(
-            output_dir=path_manager.output,
-            save_to_file=True,
-            save_format=OutputFormat.CSV,
-            save_cropped_faces=True,
-            save_preprocessed_faces=True,
-        )
-    )
-
-    core.run(pipeline)
 
 if __name__ == "__main__":
     main()

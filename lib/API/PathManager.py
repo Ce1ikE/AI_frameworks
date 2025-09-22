@@ -1,13 +1,13 @@
 from pathlib import Path
-from menu import Menu
 import logging
 
 
 class PathManager:
     logger = logging.getLogger(__name__)
 
-    def __init__(self, entrypoint: str):
+    def __init__(self, entrypoint: str, config: str = "config.toml"):
         self.entrypoint_dir = Path(entrypoint).resolve().parent
+        self.config = self.entrypoint_dir / config
         self.dataset = None
         self.input = None
         self.output = None

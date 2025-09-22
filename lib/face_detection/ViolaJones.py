@@ -1,40 +1,42 @@
-# https://realpython.com/traditional-face-detection-python/
-# https://www.youtube.com/watch?v=uEJ71VlUmMQ&t=491s
-# https://pyimagesearch.com/2018/06/18/face-recognition-with-opencv-python-and-deep-learning/
-# https://docs.opencv.org/3.4/db/d28/tutorial_cascade_classifier.html
-# https://jakevdp.github.io/PythonDataScienceHandbook/05.14-image-features.html
-
-# haarcascade files can be found at the OpenCV repository:
-# https://github.com/opencv/opencv/blob/master/data/haarcascades/
-
 import logging
+from pathlib import Path
+from enum import Enum
 import cv2
-from .CascadeType import CascadeType
 from ..API.FaceDetector import FaceDetector
 from PIL.Image import Image
 
-class ViolaJones(FaceDetector):
+class CascadeType(Enum):
+    FRONTALFACE_DEFAULT = "haarcascade_frontalface_default.xml"
+    FRONTALFACE_ALT = "haarcascade_frontalface_alt.xml"
+    FULLBODY = "haarcascade_fullbody.xml"
+
+    __all__ = ["FRONTALFACE_DEFAULT", "FRONTALFACE_ALT", "FULLBODY"]
+
+class ViolaJonesDetector(FaceDetector):
     logger = logging.getLogger(__name__)
 
     def __init__(
         self,
-        cascade_type: CascadeType = CascadeType.FRONTALFACE_DEFAULT
+        cascade_path: Path,
+        model_name: str = None
     ):
-        self.cascade_type = cascade_type
+        super().__init__(__class__.__name__ if model_name is None else model_name)
+        self.cascade_path = cascade_path
 
     def detect_faces(self, image: Image) -> list[tuple[int,int,int,int]]:
-        return cv2.CascadeClassifier(self.cascade_type.value).detectMultiScale(
+        self.bboxes = cv2.CascadeClassifier(self.cascade_path).detectMultiScale(
             cv2.cvtColor(
                 image,
                 cv2.COLOR_BGR2GRAY
             )
         )
+        self.logger.debug(f"Detected {len(self.bboxes)} face(s)")
+        return self.bboxes
 
     def detect_and_draw_faces(self, image: Image) -> tuple[list[tuple[int,int,int,int]], Image]:
-        self.detected_faces = self.detect_faces(image)
+        self.bboxes = self.detect_faces(image)
         self.input_image = image.copy()
-        self.logger.debug(f"Detected {len(self.detected_faces)} faces")
-        for (x, y, width, height) in self.detected_faces:
+        for (x, y, width, height) in self.bboxes:
             cv2.rectangle(
                 self.input_image,
                 (x, y),
@@ -42,4 +44,4 @@ class ViolaJones(FaceDetector):
                 (0, 255, 0),
                 4
             )
-        return (self.detected_faces, self.input_image)
+        return (self.bboxes, self.input_image)
