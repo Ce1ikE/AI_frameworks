@@ -74,3 +74,19 @@ YOLO
 # https://docs.ultralytics.com/
 # https://docs.ultralytics.com/integrations/onnx/
 # https://pytorch.org/hub/ultralytics_yolov5/
+
+Clustering
+https://scikit-learn.org/stable/modules/clustering.html
+
+SVM
+https://scikit-learn.org/stable/modules/svm.html
+
+REPORTING:
+==========
+
+https://www.geeksforgeeks.org/data-visualization/techniques-for-visualizing-high-dimensional-data/
+https://reference.wolfram.com/language/guide/HighDimensionalVisualization.html
+https://www.researchgate.net/publication/238668306_High-Dimensional_Visualizations
+https://projector.tensorflow.org/
+https://towardsdatascience.com/visualizations-of-embeddings-2910580df7f4/
+https://docs.scipy.org/doc/scipy/reference/generated/scipy.cluster.hierarchy.dendrogram.html

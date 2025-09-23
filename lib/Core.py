@@ -11,11 +11,11 @@ from .API.PathManager import PathManager
 class Core:
     logger = logging.getLogger(__name__)
     
-    def __init__(self, path_manager: PathManager):
-        self.paths = path_manager
+    def __init__(self, entrypoint: str, config: str = "config.toml"):
+        self.paths = PathManager(entrypoint, config)
         self.m_args = self.parse_arguments()
         self.m_config = self.parse_config()
-        path_manager.resolve_dirs(self.m_config)
+        self.paths.resolve_dirs(self.m_config)
 
         self.setup_logging()
         self.set_log_level()
@@ -47,7 +47,6 @@ class Core:
             ]
         )
         self.logger.debug(f"Logging initialized. Log file: {log_file}")
-        print(f"Logging initialized. Log file: {log_file}")
 
     def set_log_level(self):
         if self.m_args.verbose:

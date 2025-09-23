@@ -1,5 +1,7 @@
 /venv
 **/__pycache__
+/models
+/.venv
 *.pyc
 *.pyo
 *.pyd
@@ -12,8 +14,7 @@
 *.json
 *.csv
 *.python-version
-uv.lock
-
-/models
 *.pth
 *.onnx
+
+uv.lock

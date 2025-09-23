@@ -20,7 +20,8 @@ class ViolaJonesDetector(FaceDetector):
         cascade_path: Path,
         model_name: str = None
     ):
-        super().__init__(__class__.__name__ if model_name is None else model_name)
+        super().__init__(__class__.__name__)
+        self.model_name = model_name
         self.cascade_path = cascade_path
 
     def detect_faces(self, image: Image) -> list[tuple[int,int,int,int]]:
@@ -45,3 +46,11 @@ class ViolaJonesDetector(FaceDetector):
                 4
             )
         return (self.bboxes, self.input_image)
+
+    def settings(self):
+        return {
+            "model_name": self.model_name,
+            "model": self.get_name(),
+            "opencv_version": cv2.__version__,
+            "cascade_path": self.cascade_path.stem,
+        }

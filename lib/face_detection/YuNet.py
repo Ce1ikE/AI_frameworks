@@ -11,9 +11,10 @@ class YuNetDetector(FaceDetector):
         model_path="yunet.onnx",
         model_name: str = None,
     ):
-        super().__init__(__class__.__name__ if model_name is None else model_name)
+        super().__init__(__class__.__name__)
         self.detector = cv2.FaceDetectorYN.create(model_path, "", (640, 640))
         self.detections = None
+        self.model_name = model_name
 
     def detect_faces(self, image: MatLike) -> list[tuple[int, int, int, int]]:
         self.detector.setInputSize((image.shape[1], image.shape[0]))
@@ -42,3 +43,15 @@ class YuNetDetector(FaceDetector):
             bboxes: {pprint.pformat(bboxes)},
         """)
         return bboxes
+
+
+    def settings(self):
+        return {
+            "model_name": self.get_name(),
+            "model": self.model_name,
+            "opencv_version": cv2.__version__,
+            "input_size": self.detector.getInputSize(),
+            "nms_threshold": str(self.detector.getNMSThreshold()),
+            "score_threshold": str(self.detector.getScoreThreshold()),
+            "top_k": str(self.detector.getTopK()),
+        }
