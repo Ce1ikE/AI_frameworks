@@ -145,15 +145,15 @@ class Reporter:
         self.logger.info(f"Created output directory: {self.output_dir_result}")
 
     def compile_all_results(self):
-        """Compile all CSV results into a single file (bulk mode only)."""
+        """Compile all CSV results from subdirectories in output_dir into a single file (bulk mode only)."""
         if not self.bulk_mode:
             self.logger.info("Not in bulk mode. Skipping results compilation.")
             return
         if not self.config.save_compiled_results:
             self.logger.info("Compiling results is disabled in the configuration.")
             return
-            
-        csv_files = list(self.output_dir.glob("*.csv"))
+
+        csv_files = list(self.output_dir.rglob("*.csv"))
         if not csv_files:
             self.logger.warning("No CSV files found to compile.")
             return
@@ -161,10 +161,18 @@ class Reporter:
         compiled_data = pd.concat([pd.read_csv(filepath) for filepath in csv_files], ignore_index=True)
         output_path = self.output_dir / "compiled_results.csv"
         compiled_data.to_csv(output_path, index=False)
-        self.logger.info(f"Compiled {len(csv_files)} CSV files into {output_path}")
+        self.logger.info(f"Compiled {len(csv_files)} CSV files into {output_path} with {len(compiled_data)} total entries.")
                 
-    def save(self, detector: FaceDetector, embedder: FaceEmbedder, classifier: FaceClassifier,
-             image: Image, image_path: Path, results: list[dict], cropped_faces: list[Image] = None):
+    def save(
+        self, 
+        detector: FaceDetector, 
+        embedder: FaceEmbedder, 
+        classifier: FaceClassifier,
+        image: Image, 
+        image_path: Path, 
+        results: list[dict], 
+        cropped_faces: list[Image] = None
+    ):
         """Save all enabled outputs for the current processing results."""
         if not self.config.is_saving_enabled:
             self.logger.info("Saving is disabled in the configuration. No results will be saved.")
@@ -173,22 +181,43 @@ class Reporter:
         # Setup output directory
         self.setup_output_directory(detector, embedder, classifier, image_path)
 
-        # Save results to file
-        if self.config.save_image_results_to_file and results:
-            filename = f"{image_path.stem}_results.{self.config.save_image_results_to_file_format.value}"
-            self.save_to_file(filename, results)
+        saving_errors = []
+        try:
+            # Save results to file
+            if self.config.save_image_results_to_file and results:
+                filename = f"{image_path.stem}_results.{self.config.save_image_results_to_file_format.value}"
+                self.save_to_file(filename, results)
+        except Exception as e:
+            self.logger.error(f"Failed to save results to file: {e}")
+            saving_errors.append(e)
 
-        # Save cropped face images
-        if self.config.save_cropped_faces and cropped_faces:
-            self.save_img(image_path, "cropped", cropped_faces)
+        try:
+            # Save cropped face images
+            if self.config.save_cropped_faces and cropped_faces:
+                self.save_img(image_path, "cropped", cropped_faces)
+        except Exception as e:
+            self.logger.error(f"Failed to save cropped face images: {e}")
+            saving_errors.append(e)
 
-        # Save annotated original image
-        if self.config.save_annotated_image:
-            self.save_annotated_image(detector, embedder, classifier, image_path, image, results)
+        try:
+            # Save annotated original image
+            if self.config.save_annotated_image:
+                self.save_annotated_image(detector, embedder, classifier, image_path, image, results)
+        except Exception as e:
+            self.logger.error(f"Failed to save annotated original image: {e}")
+            saving_errors.append(e)
 
-        # Save model settings
-        if self.config.save_model_settings:
-            self.save_model_settings(detector, embedder, classifier)
+        try:
+            # Save model settings
+            if self.config.save_model_settings:
+                self.save_model_settings(detector, embedder, classifier)
+        except Exception as e:
+            self.logger.error(f"Failed to save model settings: {e}")
+            saving_errors.append(e)
+
+        if saving_errors:
+            self.logger.error(f"Encountered {len(saving_errors)} errors during saving operations.")
+            raise RuntimeError(f"Errors occurred during saving: {saving_errors}")
 
     def _write_json(self, file_path: Path, data: list[dict]):
         """Write data to JSON file."""
@@ -219,7 +248,7 @@ class Reporter:
             self.logger.warning(f"No data to save. Skipping saving to file {filename}.")
             return
         
-        format = format or self.config.save_format
+        format = format or self.config.save_image_results_to_file_format
         output_file = self.output_dir_result / filename
         
         format_handlers = {
@@ -290,16 +319,24 @@ class Reporter:
             
             # draw the bounding box at the detected location
             cv2.rectangle(image, (x, y), (x + width, y + height), (255, 0, 0), 6)
-            # draw landmarks if available
-            if landmarks := entry.get("landmarks"):
+            # draw landmarks (if available)
+            if (landmarks := entry.get("landmarks")) is not None:
                 for face_landmark in landmarks:
                     for landmark in face_landmark:
-                        cv2.circle(image, tuple(landmark[:2]), 2, (0, 255, 0), -1)
-            # draw confidence score if available
-            if score := entry.get("score"):
-                score_val = score[0] if isinstance(score, list) else score
-                cv2.putText(image, f"{score_val:.2f}", (x, y - 10), 
-                           cv2.FONT_HERSHEY_SIMPLEX, 1, (0, 255, 0), 2, cv2.LINE_AA)
+                        cv2.circle(image, tuple(landmark[:2]), 2, (0, 255, 0), 3)
+            # draw confidence score (if available)
+            if (score := entry.get("score")) is not None:
+                # convert to scalar float safely
+                if isinstance(score, np.ndarray):
+                    if score.size == 1:  # length-1 array
+                        score = float(score.item())
+                    else:  # multi-element array: pick first element
+                        score = float(score.flatten()[0])
+                else:
+                    score = float(score)
+
+                cv2.putText(image, f"{score:.2f}", (x, y - 10), 
+                           cv2.FONT_HERSHEY_SIMPLEX, 2, (0, 255, 0), 2, cv2.LINE_AA)
         # add model information text
         model_info = [
             f"Detector: {detector.__class__.__name__}",
@@ -308,8 +345,8 @@ class Reporter:
             f"Faces: {len(results)}"
         ]
         for i, info in enumerate(model_info):
-            cv2.putText(image, info, (10, 30 + i * 30), cv2.FONT_HERSHEY_SIMPLEX, 
-                       2, (0, 255, 0), 2, cv2.LINE_AA)
+            cv2.putText(image, info, (10, 30 + i * 50), cv2.FONT_HERSHEY_COMPLEX, 
+                       2, (255, 255, 255), 5, cv2.LINE_AA)
         # save annotated image
         output_path = self.output_dir_result / f"{image_path.stem}_annotated{image_path.suffix}"
         cv2.imwrite(str(output_path), image)

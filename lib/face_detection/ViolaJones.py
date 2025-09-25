@@ -46,19 +46,6 @@ class ViolaJonesDetector(FaceDetector):
         self.logger.debug(f"Detected {len(self.bboxes)} face(s)")
         return self.bboxes , None , None
 
-    def detect_and_draw_faces(self, image: Image) -> tuple[list[tuple[int,int,int,int]], Image]:
-        self.bboxes = self.detect_faces(image)
-        self.input_image = image.copy()
-        for (x, y, width, height) in self.bboxes:
-            cv2.rectangle(
-                self.input_image,
-                (x, y),
-                (x + width, y + height),
-                (0, 255, 0),
-                4
-            )
-        return (self.bboxes, self.input_image)
-
     def settings(self):
         return {
             "model_name": self.model_name,

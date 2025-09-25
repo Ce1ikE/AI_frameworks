@@ -39,7 +39,7 @@ class Core:
         logging.basicConfig(
             force=True,
             level=logging.DEBUG,
-            format='[%(levelname)s][%(asctime)s] - %(message)s',
+            format='[%(levelname)s][%(asctime)s][%(name)s][%(funcName)s][%(lineno)d] \n %(message)s \n',
             handlers=[
                 logging.FileHandler(log_file,mode="w"),
                 logging.StreamHandler(stream=sys.stdout)

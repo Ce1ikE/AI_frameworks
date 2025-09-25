@@ -55,14 +55,14 @@ def main():
 
     # first we don't want any HEIC files, so we convert them to JPG
     input_files = list(core.paths.input.glob("*.heic"))
-    core.logger.info(f"Found {len(input_files)} input files")
+    core.logger.info(f"Found {len(input_files)} HEIC input files")
     if len(input_files) > 0:
         convert_heic_to_jpg__pipeline(core, input_files, delete_heic_files=True)
     
     # if everything is JPG or PNG now, we can proceed with the other pipelines
     input_files = list(core.paths.input.glob("*.jpg")) + list(core.paths.input.glob("*.png")) + list(core.paths.input.glob("*.jpeg"))
-    core.logger.info(f"Found {len(input_files)} input files")
-    detect_and_embed_faces__pipeline(core).run(input_files)
+    core.logger.info(f"Found {len(input_files)} JPG/PNG input files")
+    detect_and_embed_faces__pipeline(core).run(input_files[:15], continue_on_error=True)
     
     
 if __name__ == "__main__":

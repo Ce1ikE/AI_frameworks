@@ -76,7 +76,7 @@
 ----------
 - reworking code for more "pythonic code" (inline docs) (snake case methods/params) (part 4)
 - setting up example functions that return a pipeline instead of modifying "main" each time
-
+- lots of debugging due to numpy arrays not formatting correctly see [lib.API.Reporter][save_annotated_image][328]
 
 
 

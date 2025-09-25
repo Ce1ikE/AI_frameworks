@@ -1,7 +1,8 @@
 from .ModelWrapper import ModelWrapper
 from abc import ABC,abstractmethod
 from numpy import ndarray
-class FaceClassifier(ABC,ModelWrapper):
+
+class FaceClassifier(ModelWrapper):
     model = None
 
     def __init__(self, model_name: str):

@@ -7,7 +7,7 @@ from .FaceDetector import FaceDetector
 from .FaceEmbedder import FaceEmbedder
 from .FaceClassifier import FaceClassifier
 from .Preprocessor import Preprocessor
-from .Reporter import Reporter, ReporterConfig , OutputFormat
+from .Reporter import ModelFormat, Reporter, ReporterConfig , OutputFormat
 import logging
 import time
 from enum import Enum
@@ -133,10 +133,10 @@ class Pipeline:
             save_model_settings=save_model_settings,
             save_image_results_to_file=True,
             save_compiled_results=True,
-            save_model_settings_format=True,
-            save_model_format=True,
-            save_image_results_to_file_format=True,
-            save_compiled_results_format=True
+            save_model_settings_format=OutputFormat.JSON,
+            save_model_format=ModelFormat.ONNX,
+            save_image_results_to_file_format=OutputFormat.CSV,
+            save_compiled_results_format=OutputFormat.CSV
         )
         
         return Reporter(config)
