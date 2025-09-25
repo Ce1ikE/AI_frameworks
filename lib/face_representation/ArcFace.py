@@ -33,7 +33,7 @@ class ArcFaceEmbedder(FaceEmbedder):
 
     def __init__(
         self, 
-        model_name: str = ArcFaceWeights.W600K_MBF, 
+        model_name: ArcFaceWeights = ArcFaceWeights.W600K_MBF, 
     ):
         super().__init__(__class__.__name__)
         # download model from URL
@@ -47,11 +47,12 @@ class ArcFaceEmbedder(FaceEmbedder):
         self.model_name = model_name
         self.session = ort.InferenceSession(self.model_path)
         self.input_name = self.session.get_inputs()[0].name
+        self.input_size = (112, 112)
 
     # color space converted to RGB, resized to 112x112, normalized to [-1, 1]
     def preprocess(self, face_img):
         face_img = cv2.cvtColor(face_img, cv2.COLOR_BGR2RGB)
-        face_img = cv2.resize(face_img, (112, 112))
+        face_img = cv2.resize(face_img, self.input_size)
         face_img = (face_img.astype(np.float32) - 127.5) / 128.0
         # https://realpython.com/python-ellipsis/
         # Channel Height, Width
@@ -64,15 +65,15 @@ class ArcFaceEmbedder(FaceEmbedder):
         face_img = self.preprocess(face_img)
         embedding = self.session.run(None, {self.input_name: face_img})[0]
         embedding = embedding / np.linalg.norm(embedding)
-        return embedding  # 512-D vector
+        # 512-D vector
+        return embedding  
     
     def settings(self):
         return {
             "model_name": self.get_name(),
-            "model": self.model_name,
+            "model": self.model_name.value,
             "onnx_runtime_version": ort.__version__,
-            "onnx_meta": self.session.get_modelmeta(),
-            "input_size": (112, 112),
+            "input_size": self.input_size,
             "embedding_size": 512,
             "preprocessing": "BGR->RGB, resize to 112x112, normalize to [-1, 1]",
         }

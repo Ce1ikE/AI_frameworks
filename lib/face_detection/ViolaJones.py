@@ -12,6 +12,18 @@ class CascadeType(Enum):
 
     __all__ = ["FRONTALFACE_DEFAULT", "FRONTALFACE_ALT", "FULLBODY"]
 
+HAARCASCADE_URLS = {
+    CascadeType.FRONTALFACE_DEFAULT: 'https://raw.githubusercontent.com/opencv/opencv/refs/heads/4.x/data/haarcascades/haarcascade_frontalface_default.xml',
+    CascadeType.FRONTALFACE_ALT: 'https://raw.githubusercontent.com/opencv/opencv/refs/heads/4.x/data/haarcascades/haarcascade_frontalface_alt.xml',
+    CascadeType.FULLBODY: 'https://raw.githubusercontent.com/opencv/opencv/refs/heads/4.x/data/haarcascades/haarcascade_fullbody.xml',
+}
+
+HAARCASCADE_SHA256 = {
+    CascadeType.FRONTALFACE_DEFAULT: '0f7d4527844eb514d4a4948e822da90fbb16a34a0bbbbc6adc6498747a5aafb0',
+    CascadeType.FRONTALFACE_ALT: '6281df13459cc218ff047d02b2ae3859b12ff14a93ffe8952f7b33fad7b9697b',  
+    CascadeType.FULLBODY: '041745c71eef1b5c86aef224f17ce75b042d33314cc8f6757424f8bd8cd30aa1',     
+}
+
 class ViolaJonesDetector(FaceDetector):
     logger = logging.getLogger(__name__)
 
@@ -24,7 +36,7 @@ class ViolaJonesDetector(FaceDetector):
         self.model_name = model_name
         self.cascade_path = cascade_path
 
-    def detect_faces(self, image: Image) -> list[tuple[int,int,int,int]]:
+    def detect_faces(self, image):
         self.bboxes = cv2.CascadeClassifier(self.cascade_path).detectMultiScale(
             cv2.cvtColor(
                 image,
@@ -32,7 +44,7 @@ class ViolaJonesDetector(FaceDetector):
             )
         )
         self.logger.debug(f"Detected {len(self.bboxes)} face(s)")
-        return self.bboxes
+        return self.bboxes , None , None
 
     def detect_and_draw_faces(self, image: Image) -> tuple[list[tuple[int,int,int,int]], Image]:
         self.bboxes = self.detect_faces(image)

@@ -10,7 +10,7 @@ from .ModelWrapper import ModelWrapper
 from PIL.Image import Image
 from abc import ABC,abstractmethod
 
-class FaceDetector(ModelWrapper):
+class FaceDetector(ABC,ModelWrapper):
     def __init__(self, model_name: str):
         super().__init__(model_name)
 
@@ -26,7 +26,7 @@ class FaceDetector(ModelWrapper):
 
     @abstractmethod    
     def detect_faces(self, image):
-        """Return a list of bounding boxes [(x, y, w, h), ...]"""
+        """Return a list of bounding boxes [(x, y, w, h), ...] and optionally landmarks and scores"""
         raise NotImplementedError
     
     @abstractmethod

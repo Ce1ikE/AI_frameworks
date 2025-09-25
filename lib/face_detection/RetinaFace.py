@@ -20,7 +20,7 @@ class RetinaFaceDetector(FaceDetector):
     
     def __init__(
         self, 
-        model_name: str = RetinaFaceWeights.MNET_025,
+        model_name: RetinaFaceWeights = RetinaFaceWeights.MNET_025,
         confidence_threshold: float = 0.5,
         pre_nms_top_k=5000,
         nms_threshold=0.4,
@@ -42,7 +42,7 @@ class RetinaFaceDetector(FaceDetector):
         self.model_name = model_name
         self.input_size = input_size
     
-    def detect_faces(self, image: MatLike) -> list[tuple[int,int,int,int]]:
+    def detect_faces(self, image: MatLike):
         scale_factor_w = 1.0
         scale_factor_h = 1.0
         # the reason for dynamic resizing is that RetinaFace works best when the image size is close to the input size
@@ -86,15 +86,14 @@ class RetinaFaceDetector(FaceDetector):
             landmarks: {pprint.pformat(landmarks)},
             scores: {pprint.pformat(scores)}
         """)
-        return bboxes
+        return bboxes , landmarks , scores
 
     def settings(self):
         return {
             "model_name": self.get_name(),
-            "model": self.model_name,
+            "model": self.model_name.value,
             "input_size": self.input_size,
             "onnx_runtime_version": ort.__version__,
-            "onnx_meta": self.detector.session.get_modelmeta(),
             "confidence_threshold": self.detector.conf_thresh,
             "pre_nms_top_k": self.detector.pre_nms_topk,
             "nms_threshold": self.detector.nms_thresh,

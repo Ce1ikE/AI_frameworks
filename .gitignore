@@ -1,6 +1,5 @@
 /venv
 **/__pycache__
-/models
 /.venv
 *.pyc
 *.pyo
@@ -8,6 +7,10 @@
 *.log
 *.jpg
 *.jpeg
+*.mp4
+*.mov
+*.avi
+*.heic
 *.png
 *.gif
 *.zip

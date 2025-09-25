@@ -75,11 +75,21 @@ YOLO
 # https://docs.ultralytics.com/integrations/onnx/
 # https://pytorch.org/hub/ultralytics_yolov5/
 
+
+FACE == FACE ?
+==============
+
 Clustering
 https://scikit-learn.org/stable/modules/clustering.html
 
 SVM
 https://scikit-learn.org/stable/modules/svm.html
+
+Cosine similarity or Euclidian distance
+https://stackoverflow.com/questions/60323102/clustering-512-d-facial-embeddings-vectors
+https://www.geeksforgeeks.org/python/how-to-calculate-cosine-similarity-in-python/
+https://aurigait.com/blog/face-recognition/#:~:text=The%20distance%20between%20faces%20is%20calculated%20using%20cosine%20distance.&text=Cosine%20similarity%20measures%20the%20similarity,in%20roughly%20the%20same%20direction.
+
 
 REPORTING:
 ==========
@@ -90,3 +100,5 @@ https://www.researchgate.net/publication/238668306_High-Dimensional_Visualizatio
 https://projector.tensorflow.org/
 https://towardsdatascience.com/visualizations-of-embeddings-2910580df7f4/
 https://docs.scipy.org/doc/scipy/reference/generated/scipy.cluster.hierarchy.dendrogram.html
+
+

@@ -4,9 +4,8 @@ import logging
 import tomllib
 from datetime import datetime
 from pathlib import Path
-from os.path import dirname
+from .API.PathManager import PathManager
 
-from .API.PathManager import PathManager 
 
 class Core:
     logger = logging.getLogger(__name__)
@@ -54,3 +53,6 @@ class Core:
         else:
             self.logger.setLevel(logging.INFO)
         self.logger.debug(f"Log level set to {self.logger.level}")
+
+
+

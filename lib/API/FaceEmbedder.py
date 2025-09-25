@@ -9,7 +9,7 @@
 from .ModelWrapper import ModelWrapper
 from abc import ABC,abstractmethod
 
-class FaceEmbedder(ModelWrapper):
+class FaceEmbedder(ABC, ModelWrapper):
     def __init__(self,model_name: str):
         super().__init__(model_name)
 
