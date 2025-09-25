@@ -15,21 +15,7 @@ class FaceDetector(ModelWrapper):
         super().__init__(model_name)
 
     @abstractmethod    
-    def preprocess(self, image):
-        """Preprocess the input image as required by the model"""
-        raise NotImplementedError
-
-    @abstractmethod    
-    def postprocess(self, image):
-        """Postprocess the output image"""
-        raise NotImplementedError
-
-    @abstractmethod    
     def detect_faces(self, image):
-        """Return a list of bounding boxes [(x, y, w, h), ...]"""
+        """Return a list of bounding boxes [(x, y, w, h), ...] and optionally landmarks and scores"""
         raise NotImplementedError
     
-    @abstractmethod
-    def detect_and_draw_faces(self, image):
-        """Return a list of bounding boxes [(x, y, w, h), ...] and draw them on the original input image"""
-        raise NotImplementedError

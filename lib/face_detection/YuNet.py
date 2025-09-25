@@ -1,21 +1,50 @@
+from enum import Enum
 from ..API.FaceDetector import FaceDetector
 from cv2.typing import MatLike 
 import cv2
 import logging
 import pprint
+import numpy as np
+from typing import Dict
+from ..API.model_store import verify_model_weights
+
+class YuNetWeights(str, Enum):
+    YUNET = "yunet.onnx"
+
+MODEL_URLS: Dict[YuNetWeights, str] = {
+    YuNetWeights.YUNET: 'https://huggingface.co/opencv/face_detection_yunet/resolve/main/face_detection_yunet_2023mar.onnx?download=true',
+}
+
+MODEL_SHA256: Dict[YuNetWeights, str] = {
+    YuNetWeights.YUNET: '8f2383e4dd3cfbb4553ea8718107fc0423210dc964f9f4280604804ed2552fa4',
+}
+CHUNK_SIZE = 8192
+
 class YuNetDetector(FaceDetector):
     logger = logging.getLogger(__name__)
 
     def __init__(
         self, 
-        model_path="yunet.onnx",
-        model_name: str = None,
+        model_name: YuNetWeights = YuNetWeights.YUNET,
     ):
-        super().__init__(__class__.__name__ if model_name is None else model_name)
-        self.detector = cv2.FaceDetectorYN.create(model_path, "", (640, 640))
-        self.detections = None
+        super().__init__(__class__.__name__)
 
-    def detect_faces(self, image: MatLike) -> list[tuple[int, int, int, int]]:
+        model_path = verify_model_weights(
+            model_name, 
+            model_urls=MODEL_URLS, 
+            model_sha256=MODEL_SHA256,
+            root="~/.yunet/weights",
+            chunk_size=CHUNK_SIZE
+        )
+        self.detector = cv2.FaceDetectorYN.create(
+            model_path, 
+            "", 
+            (640, 640)
+        )
+        self.detections = None
+        self.model_name = model_name
+
+    def detect_faces(self, image: MatLike):
         self.detector.setInputSize((image.shape[1], image.shape[0]))
         # output: 1xN x15 see: https://docs.opencv.org/4.x/df/d20/classcv_1_1FaceDetectorYN.html#ac05bd075ca3e6edc0e328927aae6f45b
         # faces	detection results stored in a 2D cv::Mat of shape [num_faces, 15]
@@ -41,4 +70,16 @@ class YuNetDetector(FaceDetector):
         self.logger.info(f"""\n
             bboxes: {pprint.pformat(bboxes)},
         """)
-        return bboxes
+        return bboxes , None , None
+
+
+    def settings(self):
+        return {
+            "model_name": self.get_name(),
+            "model": self.model_name.value,
+            "opencv_version": cv2.__version__,
+            "input_size": self.detector.getInputSize(),
+            "nms_threshold": str(self.detector.getNMSThreshold()),
+            "score_threshold": str(self.detector.getScoreThreshold()),
+            "top_k": str(self.detector.getTopK()),
+        }

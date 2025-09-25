@@ -1,0 +1,83 @@
+16/09/2025
+----------
+- Kick-Off project "Face detection & Face recognition"
+- creation of dataset (gathering + labeling)
+- quick braindump with students (Thomas , Arno & Robin) (detect & represent)
+
+17/09/2025
+----------
+- research possible solutions (brainstorm) 
+- first draft of the big picture (drawio)
+- project setup
+
+18/09/2025
+----------
+- research possible solutions (Viola Jones , haarcascades) 
+- programmed rough python scripts for 1st face detection test with Viola Jones + 10 raw images:
+    - 1st result not bad but a some FP's (detected a face but there is None) + FN's (detected no face while there is one)  
+- research possible alternatives (RetinaFace , YuNet)
+
+19/09/2025
+----------
+- programmed rough python scripts for 2nd face detection test with YuNet + 10 raw images:
+    - 2nd result much better but some FN's (detected no face while there is one) but less then Viola Jones  
+- programmed rough python scripts for 3rd face detection test with RetinaFace + 10 raw images:
+    - 3rd result more or less the same as YuNet but slightly better   
+
+
+20/09/2025
+----------
+- added project to Github for version control
+- switched to UV as project's package manager
+- reworking classes and code for better readabality and logic (brainstorm)
+- decided on Pipline approach as in scikit-learn
+- decided to create abstract classes for better consistency in case more models are tested
+  seperating the implementation of each model and how it is used in the pipeline such that we can swap detector , embedder and classifier
+- research possible solutions (ArcFace)
+
+21/09/2025
+----------
+- reworking classes and code for better automation of the pipeline and saving results and including face embeddings
+- programmed rough python scripts for 1st face embedding test with RetinaFace + ArcFace + 10 raw images:
+    - 1st result is good baseline to start with 
+- results can now be saved as JSON or CSV (bbox + embedding of that face inside the bbox) along with annotations on the original image + cropped faces
+  automated through a Reporter class.
+- reworking classes and code for including classifier for embeddings and training of this classifier
+- project is growing rethinking classes
+- decided to keep Pipline approach but using enums and semi config classes for seperation and maintenance concerns 
+
+22/09/2025
+----------
+- used Uniface's design: pull model from the internet with request instead of keeping a local copy as long a .onnx file is available at some URL 
+- reworking code for more "pythonic code" (inline docs) (snake case methods/params) (part 1)
+
+23/09/2025
+----------
+- competition available on Kaggle 
+- reworking code for more "pythonic code" (inline docs) (snake case methods/params) (part 2)
+- added options to save model and switch Pipeline to "bulk mode" for a better final result 
+- cleaning data : delete 0362 !!!
+- cleaning data : convert all HEIC to JPEG because it's IPhone format and thus not a universal format that can be read by OpenCV or Pillow
+  therfore used pillow-heif (used wheel otherwise need to compile libheif from source) 
+
+24/09/2025
+----------
+- reworking code for more "pythonic code" (inline docs) (snake case methods/params) (part 3)
+- added option to compile all results (embeddings) into 1 CSV file
+- better general idea: 
+    - Preparing
+      Images (train data) + RetinaFace + ArcFace = Embeddings
+    - Training (unsupervised)
+      Embeddings (train data) + classifier (Kmeans) = Clusters (centroid for each person)
+    - Inferance
+      RetinaFace + ArcFace = Embedding + classifier + (Cosine similarity or Euclidian distance idk yet) = result (maybe...haven't tested yet)
+
+25/09/2025
+----------
+- reworking code for more "pythonic code" (inline docs) (snake case methods/params) (part 4)
+- setting up example functions that return a pipeline instead of modifying "main" each time
+- lots of debugging due to numpy arrays not formatting correctly see [lib.API.Reporter][save_annotated_image][328]
+
+
+
+

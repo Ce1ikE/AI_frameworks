@@ -14,16 +14,6 @@ class FaceEmbedder(ModelWrapper):
         super().__init__(model_name)
 
     @abstractmethod
-    def preprocess(self, image) -> any:
-        """Preprocess the image before embedding."""
-        raise NotImplementedError
-
-    @abstractmethod
-    def postprocess(self, embedding) -> any:
-        """Postprocess the embedding output"""
-        raise NotImplementedError
-
-    @abstractmethod
     def embed_face(self, image) -> list[float]:
         """Return an embedding vector (e.g. 128-D)"""
         raise NotImplementedError
