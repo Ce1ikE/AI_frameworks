@@ -1,4 +1,5 @@
-# AI Frameworks
+# AI Frameworks 🤖
+
 
 ## project: setup
 - `dataset/input` should contain the training set images collected by the class 
