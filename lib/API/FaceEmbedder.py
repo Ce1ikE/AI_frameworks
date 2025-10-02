@@ -10,10 +10,13 @@ from .ModelWrapper import ModelWrapper
 from abc import ABC,abstractmethod
 
 class FaceEmbedder(ModelWrapper):
+    input_size = (112, 112)
+    output_shape = (512,)
+
     def __init__(self,model_name: str):
         super().__init__(model_name)
 
     @abstractmethod
     def embed_face(self, image) -> list[float]:
-        """Return an embedding vector (e.g. 128-D)"""
+        """Return an embedding vector (e.g. 512-D)"""
         raise NotImplementedError

@@ -1,7 +1,5 @@
 from .Core import Core
-from .API.PathManager import PathManager
 from .API.Pipeline import Pipeline
-from .API.Reporter import Reporter, ReporterConfig, OutputFormat , ModelFormat
 from .API.Preprocessor import Preprocessor
 # detectors (img -> bboxes + optionally landmarks + scores)
 from .face_detection.ViolaJones import ViolaJonesDetector , CascadeType
@@ -15,131 +13,127 @@ from .face_representation.ArcFace import ArcFaceEmbedder , ArcFaceWeights
 # classifiers (embedding vector -> label)
 from .face_classification.KMeansClassifier import KMeansClassifier
 from .face_classification.LoadedClassifier import LoadedClassifier
+from .face_classification.MetricClassifier import MetricClassifier , Metric
 
 from pathlib import Path
 import logging
+from enum import Enum
+import numpy as np
 
 logger = logging.getLogger(__name__)
 
-def advanced_example_with_direct_config__pipeline(core: Core):
-    """Example showing direct ReporterConfig usage for advanced users."""
-    config = ReporterConfig(
-        output_dir=Path(core.paths.output),
-        prefix_save_dir="advanced_DE_faces_",
-        save_annotated_image=True,
-        save_cropped_faces=True,
-        save_model=True,    
-        save_model_settings=True,
-        save_image_results_to_file=True,
-        save_compiled_results=True,
-        save_model_settings_format=OutputFormat.JSON,
-        save_model_format=ModelFormat.ONNX,
-        save_image_results_to_file_format=OutputFormat.CSV,
-        save_compiled_results_format=OutputFormat.CSV
-    )
-    
-    reporter = Reporter(config)
-    
-    return Pipeline(
-        reporter=reporter,
-        detector=RetinaFaceDetector(
-            model_name=RetinaFaceWeights.MNET_025,
-            confidence_threshold=0.6
-        ),
-        embedder=ArcFaceEmbedder(
-            model_name=ArcFaceWeights.W600K_MBF
-        ),
-        classifier=None,
-        bulk_mode=True,
-    )
+class Example(Enum):
+    CONVERT = 1
+    DETECT = 2
+    DETECT_EMBED = 3
+    DETECT_EMBED_CLASSIFY = 4
+    COMPILE = 5
+    TRAIN = 6
+    INFERENCE = 7
 
-def detect_and_embed_faces__pipeline(core: Core):
-    reporter = Pipeline.create_reporter(
-        output_dir=core.paths.output,
-        prefix_save_dir="DE_faces_",
-        save_cropped_faces=True,
-        save_model_settings=True,
-    )
-    
-    return Pipeline(
-        reporter=reporter,
-        detector=RetinaFaceDetector(
-            model_name=RetinaFaceWeights.MNET_025,
-            confidence_threshold=0.6
-        ),
-        embedder=ArcFaceEmbedder(
-            model_name=ArcFaceWeights.W600K_MBF
-        ),
-        classifier=None,
-        bulk_mode=True,
-    )
+    __all__ = [CONVERT, DETECT_EMBED, COMPILE, TRAIN, INFERENCE]
 
-def detect_embed_and_classify_faces__pipeline(core: Core, classifier_path: Path):
-    reporter = Pipeline.create_reporter(
-        output_dir=core.paths.output,
-        prefix_save_dir="DEC_faces_",
-        save_cropped_faces=True,
-        save_model_settings=True,
-    )
-    
-    return Pipeline(
-        reporter=reporter,
-        detector=RetinaFaceDetector(
-            model_name=RetinaFaceWeights.MNET_025,
-            confidence_threshold=0.6
-        ),
-        embedder=ArcFaceEmbedder(
-            model_name=ArcFaceWeights.W600K_MBF
-        ),
-        classifier=LoadedClassifier(
-            model_path=classifier_path
-        ),
-        bulk_mode=True,
-    )
+def convert_heic_to_jpg__pipeline(input_files: list[Path], delete_heic_files: bool = False):    
+    for input_file in input_files:
+        jpg_path = input_file.parent / (input_file.stem + ".jpg")
+        # we don't want any duplicate jpg files lying around
+        if jpg_path.is_file():
+            jpg_path.unlink()
+
+        Preprocessor.convert_heic_to_jpg(
+            source=input_file,
+            dest=jpg_path
+        )
+
+        if delete_heic_files:
+            input_file.unlink()
+        logger.info(f"Converted {input_file} to {jpg_path}")
 
 def detect_faces__pipeline(core: Core):
-    reporter = Pipeline.create_reporter(
-        output_dir=core.paths.output,
-        prefix_save_dir="D_faces_",
-        save_cropped_faces=True,
-        save_model_settings=True,
-    )
+    """
+        A pipeline that only detects faces in images 
+        and saves the results.
+    """
+    reporter = Pipeline.create_reporter(output_dir=core.paths.output)
     
     return Pipeline(
         reporter=reporter,
         detector=RetinaFaceDetector(
             model_name=RetinaFaceWeights.MNET_025,
-            confidence_threshold=0.6
+            confidence_threshold=0.6,
+            dynamic_size=True,
         ),
         embedder=None,
         classifier=None,
-        bulk_mode=True,
     )
 
-def train_classifier__pipeline(core: Core):
-    reporter = Pipeline.create_reporter(
-        output_dir=core.paths.output,
-        prefix_save_dir="D_faces_",
-        save_cropped_faces=True,
-        save_model_settings=True,
+def detect_embed_faces__pipeline(core: Core):
+    """
+        A pipeline that detects faces in images, 
+        creates embeddings for those faces, 
+        and saves the results.
+    """
+    reporter = Pipeline.create_reporter(output_dir=core.paths.output)
+    
+    return Pipeline(
+        reporter=reporter,
+        detector=RetinaFaceDetector(
+            model_name=RetinaFaceWeights.MNET_025,
+            confidence_threshold=0.6,
+            dynamic_size=True,
+        ),
+        embedder=ArcFaceEmbedder(
+            model_name=ArcFaceWeights.W600K_MBF
+        ),
     )
+
+def detect_embed_classify_faces__pipeline(core: Core, cluster_centers: np.ndarray):
+    """
+        A pipeline that detects faces in images, 
+        creates embeddings for those faces, 
+        classifies those embeddings,
+        and saves the results.
+    """
+    reporter = Pipeline.create_reporter(output_dir=core.paths.output)
+    
+    return Pipeline(
+        reporter=reporter,
+        detector=RetinaFaceDetector(
+            model_name=RetinaFaceWeights.MNET_025,
+            confidence_threshold=0.6,
+            dynamic_size=True,
+        ),
+        embedder=ArcFaceEmbedder(
+            model_name=ArcFaceWeights.W600K_MBF
+        ),
+        classifier=MetricClassifier(
+            cluster_centers=cluster_centers,
+            metric=Metric.COSINE,
+        ),
+    )
+
+
+
+def train_classifier__pipeline(core: Core):
+    reporter = Pipeline.create_reporter(output_dir=core.paths.output)
     
     return Pipeline(
         reporter=reporter,
         detector=None,
         embedder=None,
-        classifier=KMeansClassifier(),
-        bulk_mode=False,
+        classifier=None,
     )
 
-def convert_heic_to_jpg__pipeline(core: Core, input_files: list[Path], delete_heic_files: bool = False):    
-    for input_file in input_files:
-        jpg_path = core.paths.input / (input_file.stem + ".jpg")
-        # we don't want any duplicate jpg files lying around
-        if jpg_path.is_file():
-            jpg_path.unlink()
 
-        Preprocessor.convert_heic_to_jpg(heic_path=input_file,jpg_path=jpg_path)
-        if delete_heic_files:
-            input_file.unlink()
-        core.logger.info(f"Converted {input_file} to {jpg_path}")
+
+def compile_all_results__pipeline(core: Core,path: Path = None):
+    reporter = Pipeline.create_reporter(
+        output_dir=core.paths.output,
+        save_cropped_faces=True,
+        save_model_settings=True,
+    )
+    reporter.bulk_mode = True
+    reporter.compile_all_results(path)
+
+def inference__pipeline(core: Core):
+    pass

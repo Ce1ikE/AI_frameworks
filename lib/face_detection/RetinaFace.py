@@ -7,6 +7,8 @@ from ..API.Preprocessor import Preprocessor
 from ..API.FaceDetector import FaceDetector
 from uniface import RetinaFace
 from uniface.constants import RetinaFaceWeights
+from uniface.alignment import face_alignment
+
 # think of RetinaFace as:
 # 1) place millions of anchors of various sizes on the image.
 # 2) Model says:
@@ -25,8 +27,8 @@ class RetinaFaceDetector(FaceDetector):
         pre_nms_top_k=5000,
         nms_threshold=0.4,
         post_nms_top_k=750,
-        dynamic_size: bool = True,
-        input_size: tuple[int,int] = (640, 640)
+        dynamic_size: bool = False,
+        input_size: tuple[int,int] = (640, 640),
     ):
         super().__init__(__class__.__name__)
         # https://github.com/yakhyo/uniface/blob/main/uniface/retinaface.py
@@ -41,7 +43,7 @@ class RetinaFaceDetector(FaceDetector):
         )
         self.model_name = model_name
         self.input_size = input_size
-    
+        
     def detect_faces(self, image: MatLike):
         scale_factor_w = 1.0
         scale_factor_h = 1.0
@@ -62,7 +64,11 @@ class RetinaFaceDetector(FaceDetector):
         boxes, landmarks = detections
         scores = boxes[:, 4]
         bboxes = boxes[:, :4]
-        # convert from [x1, y1, x2, y2] to [x, y, w, h] and scale back to original image size
+        # convert from [[x1, y1, x2, y2], ...] to [[x, y, w, h], ...] and scale back to original image size
+        # [x1, y1, x2, y2] => [x1, y1, x2 - x1, y2 - y1]  
+        # let  s_w = 1/scale_factor_w
+        # let  s_h = 1/scale_factor_h
+        # | x1 , y1 , w , h|   | s_w, s_h , s_w, s_h  | = | x1/s_w , y1/s_h , w/s_w , h/s_h |
         bboxes = [
             Preprocessor.xyxy_to_xywh(bbox) * np.array([
                 1 / scale_factor_w, 1 / scale_factor_h, 
@@ -70,13 +76,14 @@ class RetinaFaceDetector(FaceDetector):
             ])
             for bbox in bboxes if bbox is not None
         ]
-        landmarks = [
-            np.array(landmark) * np.array([
-                1 / scale_factor_w, 1 / scale_factor_h
-            ]) * (len(landmark) // 2)
-            for landmark in landmarks if landmark is not None
-        ]
-
+        # scale back [[[x1, y1], [x2, y2], ...]] to original image size
+        # let  s_w = 1/scale_factor_w
+        # let  s_h = 1/scale_factor_h
+        # | x1 , y1 |   | s_w, s_h | = | x1/s_w , y1/s_h |
+        for landmark in landmarks:
+            for point in landmark:
+                point[0] = point[0] * (1 / scale_factor_w)
+                point[1] = point[1] * (1 / scale_factor_h)
         bboxes = np.array(bboxes).astype(np.int32)
         landmarks = np.array(landmarks).astype(np.int32)
 
@@ -99,4 +106,5 @@ class RetinaFaceDetector(FaceDetector):
             "nms_threshold": self.detector.nms_thresh,
             "post_nms_top_k": self.detector.post_nms_topk,
             "dynamic_size": self.detector.dynamic_size,
+            "preprocessing": "Scale to input size maintaining aspect ratio" if self.detector.dynamic_size else f"Resize to CWH({self.input_size[0]}x{self.input_size[1]})",
         }

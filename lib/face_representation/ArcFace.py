@@ -48,6 +48,7 @@ class ArcFaceEmbedder(FaceEmbedder):
         self.session = ort.InferenceSession(self.model_path)
         self.input_name = self.session.get_inputs()[0].name
         self.input_size = (112, 112)
+        self.output_shape = (512,)
 
     # color space converted to RGB, resized to 112x112, normalized to [-1, 1]
     def preprocess(self, face_img):
@@ -74,6 +75,6 @@ class ArcFaceEmbedder(FaceEmbedder):
             "model": self.model_name.value,
             "onnx_runtime_version": ort.__version__,
             "input_size": self.input_size,
-            "embedding_size": 512,
+            "embedding_size": self.output_shape[0],
             "preprocessing": "BGR->RGB, resize to 112x112, normalize to [-1, 1]",
         }

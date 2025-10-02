@@ -48,6 +48,7 @@ ONNX Model Zoo
 ArcFace
 # https://huggingface.co/onnx-community/arcface-onnx
 # https://yakhyo.github.io/facial-analysis/
+# https://medium.com/@ichigo.v.gen12/arcface-architecture-and-practical-example-how-to-calculate-the-face-similarity-between-images-183896a35957
 
 RetinaFace
 # https://medium.com/axinc-ai/retinaface-a-face-detection-model-designed-for-high-resolution-6c3900771a01
@@ -89,11 +90,10 @@ Cosine similarity or Euclidian distance
 https://stackoverflow.com/questions/60323102/clustering-512-d-facial-embeddings-vectors
 https://www.geeksforgeeks.org/python/how-to-calculate-cosine-similarity-in-python/
 https://aurigait.com/blog/face-recognition/#:~:text=The%20distance%20between%20faces%20is%20calculated%20using%20cosine%20distance.&text=Cosine%20similarity%20measures%20the%20similarity,in%20roughly%20the%20same%20direction.
-
+https://learnopencv.com/face-recognition-with-arcface/
 
 REPORTING:
 ==========
-
 https://www.geeksforgeeks.org/data-visualization/techniques-for-visualizing-high-dimensional-data/
 https://reference.wolfram.com/language/guide/HighDimensionalVisualization.html
 https://www.researchgate.net/publication/238668306_High-Dimensional_Visualizations
@@ -101,4 +101,28 @@ https://projector.tensorflow.org/
 https://towardsdatascience.com/visualizations-of-embeddings-2910580df7f4/
 https://docs.scipy.org/doc/scipy/reference/generated/scipy.cluster.hierarchy.dendrogram.html
 
+metrics
+# https://stats.stackexchange.com/questions/232500/how-do-i-know-my-k-means-clustering-algorithm-is-suffering-from-the-curse-of-dim
+# https://stats.stackexchange.com/questions/99171/why-is-euclidean-distance-not-a-good-metric-in-high-dimensions
+# https://homes.cs.washington.edu/~pedrod/papers/cacm12.pdf
+# https://medium.com/@MrBam44/how-to-evaluate-the-performance-of-clustering-algorithms-3ba29cad8c03
 
+cosine similarity , dot , euclidean
+https://medium.com/data-science-collective/cosine-distance-vs-dot-product-vs-euclidean-in-vector-similarity-search-227a6db32edb
+
+cosine 
+https://arxiv.org/html/2504.16318v2
+
+
+
+datasets for unit tests:
+========================
+https://www.geeksforgeeks.org/computer-vision/dataset-for-face-recognition/
+https://web.archive.org/web/20180427144541/http://www.ics.uci.edu/~xzhu/face/
+https://www.kaggle.com/datasets/jessicali9530/lfw-dataset/data
+https://exposing.ai/afw/
+
+BUILDING a MORE ROBUST design:
+==============================
+https://medium.com/@dkraczkowski/the-elegance-of-modular-data-processing-with-pythons-pipeline-approach-e63bec11d34f
+https://realpython.com/python-protocol/

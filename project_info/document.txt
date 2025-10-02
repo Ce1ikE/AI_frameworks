@@ -77,7 +77,46 @@
 - reworking code for more "pythonic code" (inline docs) (snake case methods/params) (part 4)
 - setting up example functions that return a pipeline instead of modifying "main" each time
 - lots of debugging due to numpy arrays not formatting correctly see [lib.API.Reporter][save_annotated_image][328]
+- saving embeddings as CSV files doesn't really work well should find binary or invoke tolist first
+- cleaning pipeline before training needs to be setup 
+- saving now creates 1 result dir , 1 cropped dir , 1 embeddings dir, 
+  model_settings.json , cos_sim_mat.csv , {img}_result.json , annotated.jpg
+- compiled saving now creates a .parquet file and a cos_sim_mat.csv 
+- Reporter plotting capabilities added (T-sne)
 
+26/09/2025
+----------
+- Reporter plotting capabilities added (cosine similarity matrix)
 
+27/09/2025
+----------
+- research possible solutions : Face alignment benchmark (https://arxiv.org/html/2412.11779v1)(see fig 4 and 5) prove that alignment is key 
+  for better face representation afterwards. 
+- crossed some TODO's of the list
+- stripped a lot of code because of sphagetti code (to many interdependecies between classes) 
 
+28/09/2025
+----------
+- unit tests (part 1)
 
+29/09/2025
+----------
+- bug fixes 
+- unit tests (part 2)
+
+30/09/2025
+----------
+- moved tests directory to a seperate module/package
+- unit tests (part 3)
+
+01/10/2025
+----------
+- unit tests (part 4 , Abdonned)
+- moved away from unit tests as i noticed design patterns problems 
+  - while the pipeline is good design architecture (especially in ML/AI related projects)
+    it doesn't translate well if it's not using the OOP principles into consideration (which i did ... but not entirely)
+    that is why we have to come up with a more robust "framework"/"library" abstract classes for each type of model was good 
+    but the Pipeline and Reporter need a make over. as quoted in article "testing can turn into nightmare".  
+
+02/10/2025
+----------

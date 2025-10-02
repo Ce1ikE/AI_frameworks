@@ -56,21 +56,26 @@ class YuNetDetector(FaceDetector):
         # 10-11: x, y of right corner of mouth (pink point in the example image)
         # 12-13: x, y of left corner of mouth (yellow point in the example image)
         # 14: face score
-        _, self.detections = self.detector.detect(image)
+        n_faces, self.detections = self.detector.detect(image)
         bboxes = []
-        
-        if self.detections is None:
+        landmarks = []
+        scores = []
+        if n_faces == 0:
             self.logger.info("No faces detected.")
             return bboxes
         
         for detection in self.detections:
             x, y, w, h = map(int, detection[0:4])
             bboxes.append((x, y, w, h))
-        
+            landmarks.append(tuple(map(int, detection[5:15])))
+            scores.append(float(detection[14]))
+
         self.logger.info(f"""\n
             bboxes: {pprint.pformat(bboxes)},
+            landmarks: {pprint.pformat(landmarks)},
+            scores: {pprint.pformat(scores)},
         """)
-        return bboxes , None , None
+        return bboxes , landmarks , scores
 
 
     def settings(self):
