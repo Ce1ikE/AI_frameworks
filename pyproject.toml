@@ -5,6 +5,7 @@ description = "Add your description here"
 readme = "README.md"
 requires-python = ">=3.13"
 dependencies = [
+    "graphviz>=0.21",
     "imageio==2.37.0",
     "joblib==1.5.2",
     "lazy-loader==0.4",
@@ -12,6 +13,7 @@ dependencies = [
     "networkx==3.5",
     "numpy==2.2.6",
     "onnxruntime>=1.22.1",
+    "onnxruntime-gpu>=1.23.0",
     "opencv-python==4.12.0.88",
     "packaging==25.0",
     "pandas>=2.3.2",
@@ -19,7 +21,10 @@ dependencies = [
     "pillow-heif",
     "plotly>=6.3.0",
     "pyarrow>=21.0.0",
+    "pydantic>=2.11.9",
+    "pydot>=4.0.1",
     "pytest>=8.4.2",
+    "pyvis>=0.3.2",
     "scikit-image==0.25.2",
     "scikit-learn==1.7.2",
     "scipy==1.16.2",
@@ -27,71 +32,9 @@ dependencies = [
     "skl2onnx>=1.19.1",
     "threadpoolctl==3.6.0",
     "tifffile==2025.9.9",
-    "torch>=2.8.0",
+    "umap-learn>=0.5.9.post2",
     "uniface>=0.1.8",
 ]
 
 [tool.uv.sources]
 pillow-heif = { path = "wheels/pillow_heif-1.1.0-cp313-cp313-win_amd64.whl" }
-
-[tool.pytest.ini_options]
-minversion = "7.0"
-addopts = [
-    "--strict-markers",
-    "--strict-config", 
-    "-ra",  # Show all test results
-    "-v",   # Verbose output
-]
-testpaths = [
-    "tests",
-]
-pythonpath = ["."]
-python_files = ["test_*.py", "*_test.py"]
-python_classes = ["Test*"]
-python_functions = ["test_*"]
-
-# Markers for different test types
-markers = [
-    "unit: Unit tests that test individual functions/methods in isolation",
-    "integration: Integration tests that test multiple components working together", 
-    "slow: Tests that take a long time to run",
-    "gpu: Tests that require GPU resources",
-    "network: Tests that require network access",
-    "real_models: Tests that use real AI models (not mocks)",
-    "reporter: Tests specific to the Reporter class functionality",
-    "config: Tests for configuration and settings validation",
-    "visualization: Tests for visualization and plotting features"
-]
-
-# Logging configuration for tests
-log_cli = true
-log_cli_level = "INFO"
-log_cli_format = "%(asctime)s [%(levelname)8s] %(name)s: %(message)s"
-log_cli_date_format = "%Y-%m-%d %H:%M:%S"
-
-# Coverage configuration
-[tool.coverage.run]
-source = ["lib"]
-omit = [
-    "lib/tests/*",
-    "lib/*/test_*", 
-    "lib/*/*test*",
-    "*/__pycache__/*",
-    "*/venv/*",
-    "*/env/*"
-]
-
-[tool.coverage.report]
-exclude_lines = [
-    "pragma: no cover",
-    "def __repr__",
-    "raise AssertionError", 
-    "raise NotImplementedError",
-    "if __name__ == .__main__.:",
-    "class .*\\(.*Protocol.*\\):",
-]
-show_missing = true
-precision = 2
-
-[tool.coverage.html]
-directory = "htmlcov"

@@ -1,11 +1,7 @@
 # AI Frameworks
 
 ## project: setup
-- `dataset/input` should contain the training set images collected by the class 
-- `dataset/output` should exist to have a location to save the results 
-- `lib` contains the modules to run this project
-- `models` conatains .onnx or .xml files if the model/algorithm has no URL to which we can download from  
-
+# ...
 
 ## project: how to run ?
 First you must install the required libraries either using the `requirements.txt` or the `pyproject.toml`
@@ -28,4 +24,4 @@ after you can just modify and run the `main.py` , which is the entrypoint of thi
 python main.py -v 
 ```
 
- 
+most of these models will not be available in this REPO due to file size that is why implementing a model store from which you can download the model is better this avoids cluttering the library the model store functions are the ones from the uniface REPO https://github.com/yakhyo but tweeked slightly to allow all models to use these function.

@@ -1,29 +1,10 @@
 /venv
-**/__pycache__
 /.venv
-*.pyc
-*.pyo
-*.pyd
-*.log
 
-dataset/**/*.jpg
-dataset/**/*.svg
-dataset/**/*.html
-dataset/**/*.jpeg
-dataset/**/*.mp4
-dataset/**/*.mov
-dataset/**/*.avi
-dataset/**/*.heic
-dataset/**/*.png
-dataset/**/*.gif
-dataset/**/*.zip
+**/__pycache__
+.pytest_cache
 
-*.json
-*.csv
-*.python-version
-*.pth
-*.onnx
-*.parquet
-*.npy
+dataset
+py4MLP_pipelines
 
 uv.lock
