@@ -1,0 +1,52 @@
+because of the cheer complexity of the current 
+project i think i want to opt for a more elegant solution
+and rethink everything from the top
+
+the idea was to provide a framework called py4MLP (Python for Machine Learning Pipelines)
+that provides some common interfaces and runtime functionality 
+to run pipelines that can either receive data from disk (path) , from a downloaded source
+or a streaming continous data source from a local device over the web or just on localhost
+The idea is not to have a pipeline like sklearn or a pipeline that runs in the cloud
+but to have the building blocks to easily create different pipelines for 
+different purposes and to have a reliable monitoring and reporting system
+
+the idea is to have a core part of the library and specifics are implemented
+in the plugins of the library.
+py4MLP/py4mlp.py
+py4MLP/core/
+py4MLP/plugins/
+
+i think that some functionality of a data bus and components is certainly not a bad idea
+however it seems that mostly a pipeline is just a sequence of functions or steps/task
+that run sequentially. So leveraging the power of multiprocessing can i think be much simpler.
+
+some good ideas that i keep in mind of my refactoring is:
+A pipeline interface that already orchstrates all the task/functions
+A data bus as intermediate between reporting/monitoring systems/classes
+A source
+A transformer
+A Sink/reporter/subscriber
+
+The thing is i want things to be configurable but at the expense of a very complex and error
+prone library.
+So we have to rethink how we want to structure the code and keep it lean and simple.
+
+
+A few questions:
+1) so the function to execute needs to be a top level function ?
+if so how can i make this "invisible" to the user ? such that they only
+need to define there components ?
+
+2) should it be better to have a pipeline interface for basic utility functions
+and delegate specific types of pipelines (batch, single, streamming, etc..) to specific pipeline derived from the base 
+
+3) so in theory i should have a pipeline that orchstrates the components , have monitoring components that subscribe to the data bus 
+and somehow have a post pipeline to gather all result from all the workers and report that back too
+
+4) why are their multiple logs being iniated ? do they all process execute my core module ?
+from lib.py4MLP.py4MLP import Py4MLP 
+Py4MLP(entrypoint=__file__)
+
+5) i want to have some kind of library that can be run on your home PC mostly
+for ML projects maybe not for production ready but at least a solid architecture that is reliable,
+and can be extended 
