@@ -1,70 +1,132 @@
-#           _____                    _____                  
-#          /\    \                  /\    \                 
-#         /::\    \                /::\    \                
-#        /::::\    \              /::::\    \               
-#       /::::::\    \            /::::::\    \              
-#      /:::/\:::\    \          /:::/\:::\    \             
-#     /:::/__\:::\    \        /:::/  \:::\    \            
-#    /::::\   \:::\    \      /:::/    \:::\    \           
-#   /::::::\   \:::\    \    /:::/    / \:::\    \          
-#  /:::/\:::\   \:::\    \  /:::/    /   \:::\    \         
-# /:::/__\:::\   \:::\____\/:::/____/     \:::\____\        
-# \:::\   \:::\   \::/    /\:::\    \      \::/    /        
-#  \:::\   \:::\   \/____/  \:::\    \      \/____/         
-#   \:::\   \:::\    \       \:::\    \                     
-#    \:::\   \:::\____\       \:::\    \                    
-#     \:::\   \::/    /        \:::\    \                   
-#      \:::\   \/____/          \:::\    \                  
-#       \:::\    \               \:::\    \                 
-#        \:::\____\               \:::\____\                
-#         \::/    /                \::/    /                
-#          \/____/                  \/____/                 
-
-from lib.Core import Core 
-from lib.API.Preprocessor import Preprocessor
-from lib.examples import (
-    advanced_example_with_direct_config__pipeline,
-    detect_and_embed_faces__pipeline,
-    detect_embed_and_classify_faces__pipeline,
-    detect_faces__pipeline, 
-    train_classifier__pipeline,
-    convert_heic_to_jpg__pipeline,
-)
-from pathlib import Path
-import pprint
 # main is the entrypoint of the application
-# it sets up the PathManager for assuring that everything is in place, 
-# Core sets up the necessary components like logging parsing config files and arguments 
-# the Pipeline is where the actual work is done where the detector, embedder and reporter are used
-# the detector detects faces in an image, the embedder creates embeddings for those faces
-# the reporter saves the results to the output directory
-# TODO: add a ML model for classification or clustering of the embeddings
-# TODO: add a option to the reporter to save a PDF report
-# TODO: add a option to the reporter to save a HTML report
-# TODO: add training of a classifier on the embeddings to the Pipeline
-# TODO: add a option to the reporter to save the classifier model
-# TODO: add a module to load a classifier model and use it in the Pipeline
-# TODO: add a option to the reporter to save the visualization of the embeddings
-# TODO: add a option to the reporter to save the visualization of the clusters
-# TODO: add time measurements to the Pipeline and reporter
+# Core sets up the necessary components like the PathManager and logging 
+# the Pipeline is where the actual work is done
+from lib.py4MLP.py4MLP import Py4MLP 
+core = Py4MLP(entrypoint=__file__, enable_logging=False)
 
-core = Core(entrypoint=__file__)
+from pathlib import Path
+
+from lib.py4MLP.core.pipeline import *
+from lib.py4MLP.plugins.face_identification_plugin import *
+from lib.py4MLP.plugins.face_identification_plugin.detectors.retinaface import RetinaFaceWeights
+from lib.py4MLP.plugins.face_identification_plugin.embedders.arcface import ArcFaceWeights
+
+def feature_extraction_pipeline(input_files_train):
+    Pipeline(
+        name=f"feature extraction pipeline",
+        output_root=core.paths.output,
+        source=ImageFileLoader("image loader",input_files_train),
+        pipeline_spec=PipelineSpec(
+            transfomers=[
+                ImageFacesDetector(
+                    "Face detector",
+                    RetinaFaceDetector(
+                        model_dir=core.paths.models,
+                        model_name=RetinaFaceWeights.MNET_V1,
+                        confidence_threshold=0.7,
+                        device="cuda"
+                    )
+                ),
+                ImageFacesExtractor(
+                    "Face extractor"
+                ),
+                ImageFacesEmbedder(
+                    "Face embedder",
+                    ArcFaceEmbedder(
+                        model_dir=core.paths.models,
+                        model_name=ArcFaceWeights.W600K_MBF,
+                        device="cuda"
+                    )
+                )
+            ],
+            worker_sinks=[
+                AnnotatedImageExporter("annotated image exporter"),
+                CroppedFaceExporter("face image exporter"),
+                EmbeddingExporter("embeddings exporter")
+            ],
+            pipeline_sinks=[
+                DataAggregator("aggregator"),
+                ParquetExporter("parquet aggregator exporter"),
+                Reporter("reporter")
+            ],
+        )
+    ).build_pipeline().run_pipeline(PipelineType.BATCH)
+
+def evaluation_pipeline(input_embeddings_files):
+    Pipeline(
+        name="embeddings evaluation pipeline",
+        output_root=core.paths.output,
+        source=EmbeddingFileLoader("embedding loader", input_embeddings_files),
+        pipeline_spec=PipelineSpec(
+            transfomers=[
+                EmbeddingNormalizer("normalize embeddings"),
+            ],
+            worker_sinks=[
+                EmbeddingExporter("normalized embeddings exporter"),
+                EmbeddingEvaluator("embeddings evaluator"),
+                TSNEVisualizer("t-SNE plot"),
+                UMAPVisualizer("UMAP plot")
+            ],
+            pipeline_sinks=[],
+        )
+    ).build_pipeline().run_pipeline(PipelineType.BATCH)
+
+def training_pipeline(input_files_train):
+    pass
+
+def inference_pipeline():
+    pass
+
+def test_availability():
+    import torch, onnxruntime, os, shutil, subprocess
+
+    print("=== GPU Diagnostic ===")
+    print("Torch CUDA available:", torch.cuda.is_available())
+    if torch.cuda.is_available():
+        print("Torch device:", torch.cuda.get_device_name(0))
+    else:
+        print("Torch device: None")
+
+    print("\nONNX Runtime providers:", onnxruntime.get_available_providers())
+    # ONNX runtime allows us to use pytorch's (with cuda support) CUDA and cuDNN dll's 
+    # because they are included with the package
+    # https://onnxruntime.ai/docs/execution-providers/CUDA-ExecutionProvider.html#compatibility-with-pytorch
+    onnxruntime.preload_dlls()
+
+    print("\nSystem PATH contains CUDA:", any("CUDA" in p for p in os.environ["PATH"].split(";")))
+
+    nvcc = shutil.which("nvcc")
+    print("nvcc found:", nvcc)
+    if nvcc:
+        subprocess.run(["nvcc", "--version"])  
+
 
 def main():
-    core.logger.info("Starting main function")
+    # test_availability()
+    
+    train_dir = Path("./dataset/train")
+    input_files_train = list(train_dir.glob("*.jpg")) + list(train_dir.glob("*.png")) + list(train_dir.glob("*.jpeg")) + list(train_dir.glob("*.heic"))
 
-    # first we don't want any HEIC files, so we convert them to JPG
-    input_files = list(core.paths.input.glob("*.heic"))
-    core.logger.info(f"Found {len(input_files)} HEIC input files")
-    if len(input_files) > 0:
-        convert_heic_to_jpg__pipeline(core, input_files, delete_heic_files=True)
-    
-    # if everything is JPG or PNG now, we can proceed with the other pipelines
-    input_files = list(core.paths.input.glob("*.jpg")) + list(core.paths.input.glob("*.png")) + list(core.paths.input.glob("*.jpeg"))
-    core.logger.info(f"Found {len(input_files)} JPG/PNG input files")
-    detect_and_embed_faces__pipeline(core).run(input_files[:15], continue_on_error=True)
-    
-    
+    feature_extraction_pipeline(input_files_train)
+
+    embeddings_retinaface_mnet025_arcface_w600k_mbf_cleaned = Path(core.paths.output / "feature_extraction_pipeline_1" / "embeddings_retinaface_mnet025_arcface_w600k_mbf_cleaned.parquet")
+    embeddings_retinaface_mnet050_arcface_w600k_mbf_cleaned = Path(core.paths.output / "feature_extraction_pipeline_2" / "embeddings_retinaface_mnet050_arcface_w600k_mbf_cleaned.parquet")
+    input_embeddings_files = [
+        embeddings_retinaface_mnet025_arcface_w600k_mbf_cleaned,
+        embeddings_retinaface_mnet050_arcface_w600k_mbf_cleaned
+    ]
+
+    # evaluation_pipeline()
+
+    test_dir = Path("./dataset/test")
+    input_files_test = list(test_dir.glob("*.jpg")) + list(test_dir.glob("*.png")) + list(test_dir.glob("*.jpeg")) + list(test_dir.glob("*.heic"))
+
+    # training_pipeline(input_files_test[:15])
+
+    # inference_pipeline()
+
+
+
 if __name__ == "__main__":
     main()
 
