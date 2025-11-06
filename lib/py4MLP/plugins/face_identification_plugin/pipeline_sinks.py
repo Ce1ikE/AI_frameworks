@@ -78,6 +78,27 @@ class Reporter(PipelineSink):
         
         print(f"Report saved at {report_path}")
 
+class PipelineReporter(PipelineSink):
+    def __init__(self, name: str):
+        super().__init__(name)
+        self.input_type = [PipelineEventType.PIPELINE_FINISHED]
+
+    def process(self, event: PipelineEventType):
+
+        time_diff = self.pipeline_storage.pipeline_end_time - self.pipeline_storage.pipeline_start_time
+        time_diff_seconds = time_diff.total_seconds()
+        report = {
+            "pipeline": self.pipeline_storage.pipeline_composition,
+            "start_time": str(self.pipeline_storage.pipeline_start_time),
+            "end_time": str(self.pipeline_storage.pipeline_end_time),
+            "duration (seconds)": str(time_diff_seconds),
+        }
+
+        report_path = self.pipeline_storage.pipeline_path / "report.json"
+        with open(report_path, "w") as f:
+            json.dump(report, f, indent=4)
+        
+        print(f"Report saved at {report_path}")
 
 # ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 class ParquetExporter(PipelineSink):

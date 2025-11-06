@@ -298,12 +298,11 @@ class TrainingResultsExporter(WorkerSink):
             "num_embeddings": len(embeddings),
             "embedding_dim": embedding_matrix.shape[1] if len(embeddings) > 0 else None,
             "has_face_paths": "face_path" in df.columns,
+            "source_file": data.embeddings.source.stem
         }
 
         with open(export_path, mode="w", encoding="utf-8") as f:
             json.dump(results, f, indent=4)
-
-
 
         if Keys.TRAINING_RECORDS not in self.worker_storage:
             self.worker_storage[Keys.TRAINING_RECORDS] = []
@@ -575,7 +574,6 @@ class UMAPVisualizer(WorkerSink):
                 print(f"Could not read image {img_path}: {e}")
                 continue
             new_color = tuple([int(channel*255) for channel in color])
-            print(f"new color: {new_color}")
             img = cv2.cvtColor(img, cv2.COLOR_BGR2RGB)
             img = Image.fromarray(img)
             img.thumbnail((40, 40), Image.Resampling.LANCZOS)

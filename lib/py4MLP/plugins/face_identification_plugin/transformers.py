@@ -277,8 +277,8 @@ class EmbeddingTrainer(Transformer):
         df = data.embeddings
         embeddings = np.vstack(df["embedding"].values)
         if self.reduce_to >= 2:
-            import umap
-            reducer = umap.UMAP(random_state=42,n_components=self.reduce_to)
+            from umap import UMAP
+            reducer = UMAP(random_state=42,n_components=self.reduce_to)
             reduced_embeddings = reducer.fit_transform(embeddings)
             df["embedding"] = [reduced_embeddings[i, :] for i in range(reduced_embeddings.shape[0])]
         embeddings = np.vstack(df["embedding"].values)

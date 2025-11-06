@@ -186,13 +186,13 @@ class Pipeline:
         raise NotImplementedError
         self.data_bus.publish(PipelineEventType.PIPELINE_STREAM_FINISHED)
 
-    def batch_pipeline(self):
+    def batch_pipeline(self,max_workers):
         components = self.transfomers
         sinks = self.worker_sinks
         p_path = self.pipeline_storage.pipeline_path
         # https://superfastpython.com/processpoolexecutor-map-vs-submit/
         with ProcessPoolExecutor(
-            max_workers=2,
+            max_workers=max_workers,
             initializer=worker_init, 
             initargs=(components, sinks, p_path)
         ) as executor:
@@ -215,7 +215,7 @@ class Pipeline:
         self.data_bus.publish(PipelineEventType.PIPELINE_BATCH_FINISHED)
 
 
-    def run_pipeline(self,pipeline_type: PipelineType):
+    def run_pipeline(self,pipeline_type: PipelineType,max_workers=None):
         if not self._is_built:
             raise RuntimeError("""Pipeline must be built before running the pipeline""")
 
@@ -227,7 +227,7 @@ class Pipeline:
         
         try:
             if pipeline_type == PipelineType.BATCH:
-                self.batch_pipeline()
+                self.batch_pipeline(max_workers)
 
             elif pipeline_type == PipelineType.SEQUENTIAL:
                 self.sequential_pipeline()
