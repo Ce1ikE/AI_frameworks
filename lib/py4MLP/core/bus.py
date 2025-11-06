@@ -3,12 +3,14 @@ from .component import *
 import sys
 import os
 import queue
+import traceback
+import threading
+
+from enum import Enum
 from typing import Type
 from collections import defaultdict
-import threading
 from dataclasses import is_dataclass
-from enum import Enum
-import traceback
+
 
 class Bus:
     def __init__(self):
@@ -84,3 +86,17 @@ class DataBus(Bus):
 
             finally:
                 self.queue.task_done()
+
+
+class DataBus(Bus):
+    def __init__(self):
+        self.subscribers = defaultdict(list)
+
+    def subscribe(self, data_type, sink):
+        key = data_type if isinstance(data_type, str) else getattr(data_type, "__name__", str(data_type))
+        self.subscribers[key].append(sink)
+
+    def publish(self, data):
+        key = data.__class__.__name__ if not isinstance(data, Enum) else data
+        for sink in self.subscribers.get(key, []):
+            sink.process(data)

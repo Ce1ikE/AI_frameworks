@@ -5,9 +5,9 @@ import numpy as np
 import cv2
 from sklearn.base import BaseEstimator, ClusterMixin
 
-from ...core.component import *
-from ...core.pipeline import *
-from ...core.bus import *
+from lib.py4MLP.core.component import *
+from lib.py4MLP.core.pipeline import *
+from lib.py4MLP.core.bus import *
 from .utils.util_functions import *
 
 from .transformers import *

@@ -10,77 +10,7 @@ from collections import defaultdict
 from pathlib import Path
 from tqdm import tqdm
 
-class _WorkerPipeline:
-    """components to execute on the provided data"""
-    def __init__(
-        self,
-        component_sequence: List[Transformer],
-        sink_sequence: List[WorkerSink],
-        pipeline_path: Path,  
-    ):
-        self.component_sequence = component_sequence
-        self.sink_sequence = sink_sequence
-        self.pipeline_path = pipeline_path
-        self.databus = DataBus()
 
-        for sub in sink_sequence:
-            sub.pipeline_path = pipeline_path
-            if sub.input_type is not None:
-                for input_type in sub.input_type if isinstance(sub.input_type, list) else [sub.input_type]:
-                    self.databus.subscribe(input_type, sub)
-        
-    def process(self, data, sample_id, sample_dir):
-        worker_storage = defaultdict(list)
-        self.databus.start()
-        
-        for sub in self.sink_sequence:
-            sub.worker_storage = worker_storage
-            sub.sample_dir = sample_dir
-            sub.sample_id = sample_id
-
-        try:
-            current = data
-            for component in self.component_sequence:
-                current = component.process(current)
-                self.databus.publish(current)
-
-        except Exception as e:
-            print(f"[WorkerPipelineProcess] Error processing sample {sample_id}: {e}")
-            traceback.print_exc()
-            raise e
-
-        self.databus.stop()
-        return worker_storage , sample_id
-
-_worker_instance = None 
-def worker_init(
-    component_sequence, 
-    sink_sequence, 
-    pipeline_path
-):
-    """
-    Initializes the worker instance once per process.
-    """
-    global _worker_instance
-    _worker_instance = _WorkerPipeline(
-        component_sequence,
-        sink_sequence,
-        pipeline_path
-    )
-
-def _run_worker(
-    data, 
-    sample_id, 
-    sample_dir,
-):
-    global _worker_instance
-    if _worker_instance is None:
-        raise RuntimeError("Worker not initialized")
-    return _worker_instance.process(
-        data, 
-        sample_id, 
-        sample_dir,
-    )
 
 @dataclass 
 class PipelineSpec:
@@ -247,7 +177,74 @@ class Pipeline:
             self.data_bus.stop()
             print("[Pipeline] Shutdown complete.")
 
+class _WorkerPipeline:
+    """components to execute on the provided data"""
+    def __init__(
+        self,
+        component_sequence: List[Transformer],
+        sink_sequence: List[WorkerSink],
+        pipeline_path: Path,  
+    ):
+        self.component_sequence = component_sequence
+        self.sink_sequence = sink_sequence
+        self.pipeline_path = pipeline_path
+        self.databus = DataBus()
 
-
-
+        for sub in sink_sequence:
+            sub.pipeline_path = pipeline_path
+            if sub.input_type is not None:
+                for input_type in sub.input_type if isinstance(sub.input_type, list) else [sub.input_type]:
+                    self.databus.subscribe(input_type, sub)
         
+    def process(self, data, sample_id, sample_dir):
+        worker_storage = defaultdict(list)
+        self.databus.start()
+        
+        for sub in self.sink_sequence:
+            sub.worker_storage = worker_storage
+            sub.sample_dir = sample_dir
+            sub.sample_id = sample_id
+
+        try:
+            current = data
+            for component in self.component_sequence:
+                current = component.process(current)
+                self.databus.publish(current)
+
+        except Exception as e:
+            print(f"[WorkerPipelineProcess] Error processing sample {sample_id}: {e}")
+            traceback.print_exc()
+            raise e
+
+        self.databus.stop()
+        return worker_storage , sample_id
+
+_worker_instance = None 
+def worker_init(
+    component_sequence, 
+    sink_sequence, 
+    pipeline_path
+):
+    """
+    Initializes the worker instance once per process.
+    """
+    global _worker_instance
+    _worker_instance = _WorkerPipeline(
+        component_sequence,
+        sink_sequence,
+        pipeline_path
+    )
+
+def _run_worker(
+    data, 
+    sample_id, 
+    sample_dir,
+):
+    global _worker_instance
+    if _worker_instance is None:
+        raise RuntimeError("Worker not initialized")
+    return _worker_instance.process(
+        data, 
+        sample_id, 
+        sample_dir,
+    )

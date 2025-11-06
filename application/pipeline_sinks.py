@@ -6,8 +6,9 @@ from .utils.util_functions import *
 import pandas as pd
 import json
 import plotly.express as px
-from matplotlib import pyplot as plt
+
 # https://www.geeksforgeeks.org/data-visualization/how-to-create-matplotlib-plots-without-a-gui/
+from matplotlib import pyplot as plt
 import matplotlib
 matplotlib.use('Agg')
 plt.ioff()
