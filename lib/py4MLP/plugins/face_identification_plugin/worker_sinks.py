@@ -95,6 +95,30 @@ class CroppedFaceExporter(WorkerSink):
             self.worker_storage[Keys.FACE_RECORDS].append(path_to_file)
 
 # ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+class ClassificationExporter(WorkerSink):
+    def __init__(self, name: str):
+        super().__init__(name)
+        self.input_type = ImageClassifiedMessage
+
+    def process(self, data: ImageClassifiedMessage):
+        results = []
+        results.append({
+            "image_name": data.original_image.path.stem
+        })
+        for idx, face in enumerate(data.classifications):
+            results.append({
+                "label": face.label,
+                "bbox" : face.embedding.face.detection.bbox,
+                "landmarks" : face.embedding.face.detection.landmarks,
+                "score" : face.embedding.face.detection.score,
+            })
+
+        path_to_file = self.sample_dir / "classifications.json"
+        with open(path_to_file, "w") as f:
+            json.dump(results, f, indent=4)
+            self.worker_storage[Keys.CLASSIFICATION_RECORDS].append(path_to_file)
+
+# ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 class EmbeddingExporter(WorkerSink):
     def __init__(self, name: str):
         super().__init__(name)

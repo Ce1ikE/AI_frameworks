@@ -312,6 +312,27 @@ class EmbeddingTrainer(Transformer):
             "reduced_to" : self.reduce_to if self.reduce_to is not None else "None"
         }
 
+# ////////////////////////////////////////////////////////////////////////////////////////////////////////////
+class EmbeddingClassifier(Transformer):
+    def __init__(self, name, classifier: FaceClassifier):
+        super().__init__(name)
+        Utils.validate_instance(classifier, FaceClassifier, "classifier")
+        self.classifier = classifier
 
+    def process(self, data: ImageEmbeddingMessage):
+        classifications: list[FaceClassifiedMessage] = []
+        for embedding_message in data.embeddings:
+            classifications.append(
+                FaceClassifiedMessage(
+                    label=self.classifier.predict(embedding_message.embedding),
+                    embedding=embedding_message
+                )
+            )
 
-
+        return ImageClassifiedMessage(
+            original_image=data.original_image,
+            classifications=classifications
+        )
+    
+    def settings(self):
+        pass

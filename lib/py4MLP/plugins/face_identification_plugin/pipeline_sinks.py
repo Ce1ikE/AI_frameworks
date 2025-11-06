@@ -29,7 +29,7 @@ class DataAggregator(PipelineSink):
             embeddings: list = worker_storage.get(Keys.EMBEDDINGS_RECORDS, [])
             faces: list = worker_storage.get(Keys.FACE_RECORDS, [])
             
-            for emb_path, face_path in zip(embeddings, faces):
+            for emb_path, face_path, classification in zip(embeddings, faces):
                 emb_full: Path = (sample_dir.parent / emb_path).resolve()
                 face_full: Path = (sample_dir.parent / face_path).resolve()
 
@@ -44,9 +44,15 @@ class DataAggregator(PipelineSink):
                     "embedding": emb_vector.astype(np.float32),
                     "face_path": str(face_full)
                 })
+
+            if worker_storage.get(Keys.CLASSIFICATION_RECORDS,False):
+                
+
         df = pd.DataFrame(rows)
         self.pipeline_storage.pipeline_ctx[Keys.AGGREGATED_DF.value] = df
         print(f"DataAggregator built unified dataframe with {len(df)} rows.")
+
+
 
 # ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 class Reporter(PipelineSink):
