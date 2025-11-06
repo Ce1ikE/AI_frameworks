@@ -1,5 +1,5 @@
 import logging
-from .base import FaceClassifier, LearningType
+from .base import FaceClassifier
 import numpy as np
 from enum import Enum
 from ..utils.model_backend import BackendType
@@ -16,10 +16,6 @@ class Metric(Enum):
     DOT = "dot"
 
 class MetricClassifier(FaceClassifier):
-    logger = logging.getLogger(__name__)
-    supports_devices = ["cpu"]
-    supports_training = False
-
     def __init__(
         self, 
         cluster_centers: np.ndarray, 
@@ -29,11 +25,10 @@ class MetricClassifier(FaceClassifier):
     ):
         super().__init__(
             backend=BackendType.SKLEARN, 
-            learning_type=LearningType.UNSUPERVISED
         )
         self.metric = metric
 
-        if cluster_centers is None:
+        if cluster_centers is None and len(cluster_centers) > 0:
             raise ValueError("Cluster centers cannot be None")
         if threshold is not None and threshold < 0:
             raise ValueError("Threshold must be non-negative")
@@ -42,13 +37,6 @@ class MetricClassifier(FaceClassifier):
         
         self.cluster_centers = cluster_centers
         self.threshold = threshold
-
-    def train(self, embeddings, labels = None):
-        """
-        MetricClassifier is unsupervised, so training is not required.
-        This method is provided for compatibility with the FaceClassifier interface.
-        """
-        raise NotImplementedError("MetricClassifier does not support training")
 
     def predict(self, embedding: np.ndarray) -> int:
         embedding = np.array(embedding).flatten().reshape(1, -1) if embedding is not None else None
@@ -78,7 +66,6 @@ class MetricClassifier(FaceClassifier):
         # for example in high dimensions the euclidean distance and cosine similarity becomes less useful because of the distance
         # the dot product takes into account both the magnitude and the direction of the vectors however makes it computationally more expensive
 
-
         if self.metric and self.cluster_centers is not None and embedding is not None:
             cluster_distances = []
             for center in self.cluster_centers:
@@ -92,7 +79,6 @@ class MetricClassifier(FaceClassifier):
                 elif self.metric == Metric.DOT:
                     dist = np.dot(embedding, center)
                 cluster_distances.append(dist)
-
             # so once we have all distances we can find the closest center
             # but we also need to check if the distance is below a certain threshold
             # because if the distance is too high, we are likely dealing with an unknown face
@@ -108,6 +94,7 @@ class MetricClassifier(FaceClassifier):
     def settings(self):
         return {
             "n_clusters": len(self.cluster_centers) if self.cluster_centers is not None else None,
+            "cluster_centers" : self.cluster_centers,
             "metric": self.metric.value if self.metric else None,
             "threshold": self.threshold,
         }

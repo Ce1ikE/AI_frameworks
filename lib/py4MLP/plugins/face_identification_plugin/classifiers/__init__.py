@@ -1,4 +1,3 @@
-from .kmeans import KMeansClassifier
 from .classifier import MetricClassifier
-from .svm import SVMClassifier
-from .base import FaceClassifier, LearningType
+from .onnxclassifier import ONNXClassifier
+from .base import FaceClassifier

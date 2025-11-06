@@ -1,9 +1,7 @@
 import cv2
-import logging
 import numpy as np
-
-
-logger = logging.getLogger(__name__)
+import seaborn as sns
+from matplotlib import pyplot as plt
 
 class Utils:
     def __init__( target_size=(160, 160)):
@@ -28,3 +26,14 @@ class Utils:
         if not isinstance(obj, cls):
             raise ValueError(f"{name} must be an instance of {cls.__name__}")
     
+    @staticmethod
+    def create_label_colors(labels):
+        unique_labels = np.unique(labels)
+        palette = sns.color_palette("tab20", len(unique_labels))
+        label_to_color = {lbl: palette[i] for i, lbl in enumerate(unique_labels)}
+        colors = [label_to_color[lbl] for lbl in labels]
+        handles = [
+            plt.Line2D([], [], marker="o", color="w", markerfacecolor=palette[i], label=str(lbl), markersize=8)
+            for i, lbl in enumerate(unique_labels)
+        ]
+        return colors, handles

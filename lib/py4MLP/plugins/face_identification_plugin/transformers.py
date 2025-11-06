@@ -3,6 +3,7 @@ from pathlib import Path
 import pandas as pd
 import numpy as np
 import cv2
+from sklearn.base import BaseEstimator, ClusterMixin
 
 from ...core.component import *
 from ...core.pipeline import *
@@ -259,23 +260,10 @@ class EmbeddingNormalizer(Transformer):
 
 # ////////////////////////////////////////////////////////////////////////////////////////////////////////////
 class EmbeddingTrainer(Transformer):
-
-    class Algorithm(Enum):
-        KMEANS = "kmeans"
-        HDBSCAN = "hdbscan"
-        OPTICS = "optics"
-        AGGLOMERATIVE = "agglomerative"
-        MEAN_SHIFT = "mean_shift"
-        DBSCAN = "dbscan"
-        SPECTRAL = "spectral"
-        BIRCH = "birch"
-        SVM = "svm"
-        RANDOM_FOREST = "random_forest"
-
-    def __init__(self, name: str, algorithm: Algorithm = Algorithm.KMEANS, n_clusters: int = 10):
+    def __init__(self, name: str, algorithms: list[BaseEstimator | ClusterMixin],reduce_to=-1):
         super().__init__(name)
-        self.algorithm = algorithm
-        self.n_clusters = n_clusters
+        self.algorithms = algorithms
+        self.reduce_to = reduce_to
 
     def process(self, data: NormalizedEmbeddings):
         try:
@@ -286,18 +274,44 @@ class EmbeddingTrainer(Transformer):
         if embeddings is None or len(embeddings) == 0:
             raise ValueError("No embeddings available for training")
 
-        # Check if the embeddings DataFrame contains the necessary for supervised training
-        # For unsupervised training, this check can be skipped or modified accordingly
-        if self.algorithm in {
-            self.Algorithm.SVM,
-        }:
-            training_type = "unsupervised"
-        else:
-            training_type = "supervised"
+        df = data.embeddings
+        embeddings = np.vstack(df["embedding"].values)
+        if self.reduce_to >= 2:
+            import umap
+            reducer = umap.UMAP(random_state=42,n_components=self.reduce_to)
+            reduced_embeddings = reducer.fit_transform(embeddings)
+            df["embedding"] = [reduced_embeddings[i, :] for i in range(reduced_embeddings.shape[0])]
+        embeddings = np.vstack(df["embedding"].values)
+
+        training_times = []
+        for alg in self.algorithms:
+            start_time =  dt.datetime.now()
+            labels = alg.fit_predict(embeddings)
+            end_time = dt.datetime.now()
+            df[alg.__class__.__name__] = labels
+            time_diff = end_time - start_time
+            training_times.append(time_diff.total_seconds())
+
+        return TrainingResults(
+            embeddings=NormalizedEmbeddings(
+                source=data.source,
+                embeddings=df,
+            ),
+            models=[
+                TrainedModel(
+                    model=alg,
+                    model_name=alg.__class__.__name__,
+                    training_time=train_time_alg
+                ) 
+                for train_time_alg, alg in zip(training_times,self.algorithms)]
+        )
+
+    def settings(self):
+        return {
+            "trained_algorithms" : [{algorithm.__class__.__name__ : algorithm.get_params()} for algorithm in self.algorithms],
+            "reduced_to" : self.reduce_to if self.reduce_to is not None else "None"
+        }
 
 
-        
 
-        # placeholder for training logic
-        # e.g., clustering, classifier training, etc.
 

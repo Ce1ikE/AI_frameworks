@@ -14,9 +14,15 @@ from ..utils.model_store import verify_model_weights
 
 class ArcFaceWeights(str, Enum):
     W600K_MBF = "arcface_w600k_mbf"
-    """model based on MobileFaceNet architecture W600K (webface 600,000 identities) dataset used for training"""
+    """
+        model based on MobileFaceNet architecture.
+        W600K (webface 600,000 identities) dataset used for training
+    """
     W600K_R50 = "arcface_w600k_r50"
-    """model based on ResNet50 architecture. W600K (webface 600,000 identities) dataset used for training"""
+    """
+        model based on ResNet50 architecture. 
+        W600K (webface 600,000 identities) dataset used for training
+    """
 
 MODEL_URLS: Dict[ArcFaceWeights, str] = {
     ArcFaceWeights.W600K_MBF: 'https://huggingface.co/WePrompt/buffalo_sc/resolve/main/w600k_mbf.onnx?download=true',
@@ -60,6 +66,8 @@ class ArcFaceEmbedder(FaceEmbedder):
 
     def _lazy_init(self):
         if not self.initialized:
+            # either use onnxruntime's preload_dlls() method (newer versions)
+            # or import torch. 
             if self.device != "cpu":
                 ort.preload_dlls()
         
@@ -95,6 +103,7 @@ class ArcFaceEmbedder(FaceEmbedder):
         return {
             **super().settings(),
             "model": self.model_name.value,
+            "device": self.device,
             "input_size": self.input_shape,
             "embedding_size": self.output_shape,
             "onnx_runtime_version": ort.__version__,
