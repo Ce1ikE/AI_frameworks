@@ -18,7 +18,7 @@ class Metric(Enum):
 class MetricClassifier(FaceClassifier):
     def __init__(
         self, 
-        cluster_centers: np.ndarray, 
+        cluster_centers: list[np.ndarray], 
         metric: Metric = Metric.EUCLIDEAN, 
         threshold: float = None,
 
@@ -28,14 +28,21 @@ class MetricClassifier(FaceClassifier):
         )
         self.metric = metric
 
-        if cluster_centers is None and len(cluster_centers) > 0:
-            raise ValueError("Cluster centers cannot be None")
+        if cluster_centers is None and len(cluster_centers) > 1:
+            raise ValueError("Cluster centers cannot be None and there must be more then 1 cluster")
         if threshold is not None and threshold < 0:
             raise ValueError("Threshold must be non-negative")
         if metric == Metric.COSINE and threshold is not None and (threshold < -1 or threshold > 1):
             raise ValueError("Cosine similarity threshold must be in the range [-1, 1]")
         
         self.cluster_centers = cluster_centers
+        print("Cluster centers are of shape:")
+        for i,center in enumerate(self.cluster_centers):
+            print(f"({i})  {center.shape}")
+            if center.shape != (1,512):
+                center = center.reshape(1,-1)
+                print(f"({i})  {center.shape}")
+                self.cluster_centers[i] = center
         self.threshold = threshold
 
     def predict(self, embedding: np.ndarray) -> int:
@@ -44,8 +51,8 @@ class MetricClassifier(FaceClassifier):
         # each center is a numpy array of shape (d,)
         # where d is the dimension which means the requires the same dimensions
         if self.cluster_centers is not None and embedding is not None:
-            if embedding.shape[1] != self.cluster_centers.shape[1]:
-                raise ValueError(f"{self.get_name()} : Embedding dimension {embedding.shape[1]} does not match cluster centers dimension {self.cluster_centers.shape[1]}")
+            if embedding.shape != self.cluster_centers[0].shape:
+                raise ValueError(f"Embedding dimension {embedding.shape} does not match cluster centers dimension {self.cluster_centers[0].shape}")
 
         # first check every cluster center and compute the distance based on the metric provided
         # to the embedding then return the index of the closest center as the label

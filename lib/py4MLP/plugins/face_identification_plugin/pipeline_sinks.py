@@ -21,7 +21,7 @@ class DataAggregator(PipelineSink):
 
     def process(self, event: PipelineEventType):
         rows = []
-
+        class_labels = []
         for sample_id, sample_info in self.pipeline_storage.sample_storage.items():
             sample_dir: Path = sample_info.sample_dir
             worker_storage: dict = sample_info.worker_storage
@@ -29,7 +29,7 @@ class DataAggregator(PipelineSink):
             embeddings: list = worker_storage.get(Keys.EMBEDDINGS_RECORDS, [])
             faces: list = worker_storage.get(Keys.FACE_RECORDS, [])
             
-            for emb_path, face_path, classification in zip(embeddings, faces):
+            for emb_path, face_path in zip(embeddings, faces):
                 emb_full: Path = (sample_dir.parent / emb_path).resolve()
                 face_full: Path = (sample_dir.parent / face_path).resolve()
 
@@ -46,12 +46,21 @@ class DataAggregator(PipelineSink):
                 })
 
             if worker_storage.get(Keys.CLASSIFICATION_RECORDS,False):
-                
-
+                path_to_classifications = worker_storage.get(Keys.CLASSIFICATION_RECORDS)
+                for path in path_to_classifications:
+                    with open(path, "r") as f:
+                        content = json.loads(f.read())
+                        class_labels.append(content)
+                    
         df = pd.DataFrame(rows)
         self.pipeline_storage.pipeline_ctx[Keys.AGGREGATED_DF.value] = df
         print(f"DataAggregator built unified dataframe with {len(df)} rows.")
 
+        df = pd.DataFrame(class_labels)
+        df.to_parquet(
+            self.pipeline_storage.pipeline_path / "classification_results.parquet"
+        )
+        print(f"DataAggregator built unified dataframe with {len(df)} rows.")
 
 
 # ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
@@ -80,7 +89,7 @@ class Reporter(PipelineSink):
 
         report_path = self.pipeline_storage.pipeline_path / "report.json"
         with open(report_path, "w") as f:
-            json.dump(report, f, indent=4)
+            json.dump(report, f, indent=4,cls=NpEncoder)
         
         print(f"Report saved at {report_path}")
 
@@ -102,7 +111,7 @@ class PipelineReporter(PipelineSink):
 
         report_path = self.pipeline_storage.pipeline_path / "report.json"
         with open(report_path, "w") as f:
-            json.dump(report, f, indent=4)
+            json.dump(report, f, indent=4,cls=NpEncoder)
         
         print(f"Report saved at {report_path}")
 

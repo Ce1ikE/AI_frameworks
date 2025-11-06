@@ -18,6 +18,7 @@ class FaceClassifier(BackendMixin):
         """Return a label for the given embedding"""
         raise NotImplementedError("Predict method must be implemented by the classifier")
     
-    def metrics(self) -> dict:
+    def settings(self) -> dict:
         """Optional training metrics (inertia, silhouette, etc.)."""
         return {}
+    

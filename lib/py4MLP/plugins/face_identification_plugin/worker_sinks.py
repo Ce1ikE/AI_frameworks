@@ -37,8 +37,6 @@ plt.style.use("dark_background")
 # [x] Save silhouette scores	            
 # [x] Save elbow method plot	            
 
-
-
 # ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 # Subscribers
 # ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
@@ -102,20 +100,16 @@ class ClassificationExporter(WorkerSink):
 
     def process(self, data: ImageClassifiedMessage):
         results = []
-        results.append({
-            "image_name": data.original_image.path.stem
-        })
+        labels = []
         for idx, face in enumerate(data.classifications):
-            results.append({
-                "label": face.label,
-                "bbox" : face.embedding.face.detection.bbox,
-                "landmarks" : face.embedding.face.detection.landmarks,
-                "score" : face.embedding.face.detection.score,
-            })
+            labels.append(face.label)
 
         path_to_file = self.sample_dir / "classifications.json"
         with open(path_to_file, "w") as f:
-            json.dump(results, f, indent=4)
+            json.dump({
+                "image_name": "image_" + data.original_image.path.stem,
+                "labels": labels
+            }, f, indent=4, cls=NpEncoder)
             self.worker_storage[Keys.CLASSIFICATION_RECORDS].append(path_to_file)
 
 # ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////

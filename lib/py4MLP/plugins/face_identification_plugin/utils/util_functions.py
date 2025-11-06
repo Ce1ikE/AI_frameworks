@@ -2,6 +2,7 @@ import cv2
 import numpy as np
 import seaborn as sns
 from matplotlib import pyplot as plt
+import json
 
 class Utils:
     def __init__( target_size=(160, 160)):
@@ -37,3 +38,13 @@ class Utils:
             for i, lbl in enumerate(unique_labels)
         ]
         return colors, handles
+    
+class NpEncoder(json.JSONEncoder):
+    def default(self, obj):
+        if isinstance(obj, np.integer):
+            return int(obj)
+        if isinstance(obj, np.floating):
+            return float(obj)
+        if isinstance(obj, np.ndarray):
+            return obj.tolist()
+        return json.JSONEncoder.default(self, obj)

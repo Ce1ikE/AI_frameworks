@@ -125,7 +125,7 @@ def inference_pipeline(input_files_test,cluster_centers):
                         model_dir=core.paths.models,
                         model_name=RetinaFaceWeights.MNET_025,
                         confidence_threshold=0.7,
-                        device="cpu"
+                        device="cuda"
                     )
                 ),
                 ImageFacesExtractor(
@@ -136,14 +136,22 @@ def inference_pipeline(input_files_test,cluster_centers):
                     ArcFaceEmbedder(
                         model_dir=core.paths.models,
                         model_name=ArcFaceWeights.W600K_MBF,
-                        device="cpu"
+                        device="cuda"
+                    )
+                ),
+                EmbeddingClassifier(
+                    "Face classifier",
+                    MetricClassifier(
+                        cluster_centers=cluster_centers,
+                        metric=Metric.EUCLIDEAN
                     )
                 )
             ],
             worker_sinks=[
                 AnnotatedImageExporter("annotated image exporter"),
                 CroppedFaceExporter("face image exporter"),
-                EmbeddingExporter("embeddings exporter")
+                EmbeddingExporter("embeddings exporter"),
+                ClassificationExporter("classification exporter")
             ],
             pipeline_sinks=[
                 DataAggregator("aggregator"),
@@ -151,7 +159,7 @@ def inference_pipeline(input_files_test,cluster_centers):
                 Reporter("reporter")
             ],
         )
-    ).build_pipeline().run_pipeline(PipelineType.BATCH)
+    ).build_pipeline().run_pipeline(PipelineType.BATCH,max_workers=2)
 
 def main():
     # test_availability()
@@ -186,10 +194,18 @@ def main():
 
     test_dir = Path("./dataset/test")
     input_files_test = list(test_dir.glob("*.jpg")) + list(test_dir.glob("*.png")) + list(test_dir.glob("*.jpeg")) + list(test_dir.glob("*.heic"))
+    clusters = Path("C:\\Users\\ennis\\Documents\\Financien_Werk_OV\\my_works\\Courses TM\\2025-2026\\Semester 1\\AI frameworks\\AIFrameworks\\py4MLP_pipelines\\results\\training_pipeline_20251106_105917\\sample_001\\models\\cluster_center_data_20251106_110048.parquet")
+    clusters: pd.DataFrame = pd.read_parquet(clusters)
+    clusters = clusters[clusters.columns[0]].to_numpy()
+    clusters = np.delete(clusters,4)
+    print(len(clusters))
+    # inference_pipeline(input_files_test,clusters)
 
-    inference_pipeline()
-
-
+    results_cls = Path("py4MLP_pipelines\\results\\inference_pipeline_20251106_171157\\classification_results.parquet")
+    resulst_cls: pd.DataFrame = pd.read_parquet(results_cls)
+    resulst_cls.info()
+    print(resulst_cls.head())
+    print(len(resulst_cls))
 
 if __name__ == "__main__":
     main()

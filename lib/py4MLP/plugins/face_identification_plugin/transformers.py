@@ -335,4 +335,6 @@ class EmbeddingClassifier(Transformer):
         )
     
     def settings(self):
-        pass
+        return {
+            "classifier" : self.classifier.settings()
+        }

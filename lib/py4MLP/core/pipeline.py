@@ -46,6 +46,7 @@ class _WorkerPipeline:
 
         except Exception as e:
             print(f"[WorkerPipelineProcess] Error processing sample {sample_id}: {e}")
+            traceback.print_exc()
             raise e
 
         self.databus.stop()
