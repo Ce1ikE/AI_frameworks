@@ -149,7 +149,6 @@ def main():
 
     embeddings_retinaface_mnet025_arcface_w600k_mbf_cleaned = Path(core.paths.output / "feature_extraction_pipeline_1" / "embeddings_retinaface_mnet025_arcface_w600k_mbf_cleaned.parquet")
     embeddings_retinaface_mnet050_arcface_w600k_mbf_cleaned = Path(core.paths.output / "feature_extraction_pipeline_2" / "embeddings_retinaface_mnet050_arcface_w600k_mbf_cleaned.parquet")
-    embedding_retinaface_mnet050_arcface_w600k_mbf_cleaned = Path("C:\\Users\\ennis\\Documents\\Financien_Werk_OV\\my_works\\Courses TM\\2025-2026\\Semester 1\\AI frameworks\\AIFrameworks\\py4MLP_pipelines\\results\\feature_extraction_pipeline_20251106_105041\\embeddings.parquet")
     input_embeddings_files = [
         embeddings_retinaface_mnet025_arcface_w600k_mbf_cleaned,
         embeddings_retinaface_mnet050_arcface_w600k_mbf_cleaned
@@ -157,7 +156,7 @@ def main():
 
     # evaluation_pipeline([embedding_retinaface_mnet050_arcface_w600k_mbf_cleaned])
 
-    training_pipeline([embedding_retinaface_mnet050_arcface_w600k_mbf_cleaned],13)
+    training_pipeline(input_embeddings_files,13)
 
     test_dir = Path("./dataset/test")
     input_files_test = list(test_dir.glob("*.jpg")) + list(test_dir.glob("*.png")) + list(test_dir.glob("*.jpeg")) + list(test_dir.glob("*.heic"))
