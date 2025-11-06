@@ -22,7 +22,7 @@ def feature_extraction_pipeline(input_files_train):
                     "Face detector",
                     RetinaFaceDetector(
                         model_dir=core.paths.models,
-                        model_name=RetinaFaceWeights.MNET_V1,
+                        model_name=RetinaFaceWeights.MNET_025,
                         confidence_threshold=0.7,
                         device="cuda"
                     )
@@ -71,8 +71,46 @@ def evaluation_pipeline(input_embeddings_files):
         )
     ).build_pipeline().run_pipeline(PipelineType.BATCH)
 
-def training_pipeline(input_files_train):
-    pass
+def training_pipeline(input_embeddings_files,n_clusters=13):
+    from sklearn.cluster import (
+        KMeans,
+        DBSCAN,
+        AgglomerativeClustering,
+        MeanShift,
+        OPTICS,
+        SpectralClustering,
+        Birch
+    )
+    from sklearn.cluster._hdbscan.hdbscan import HDBSCAN        
+    RANDOM_STATE=42
+
+    Pipeline(
+        name="training pipeline",
+        output_root=core.paths.output,
+        source=EmbeddingFileLoader("embedding loader", input_embeddings_files),
+        pipeline_spec=PipelineSpec(
+            transfomers=[
+                EmbeddingTrainer(
+                    "model trainer",
+                    reduce_to=-1,
+                    algorithms=[
+                        KMeans(n_clusters=n_clusters,random_state=RANDOM_STATE),
+                        # AgglomerativeClustering(n_clusters=n_clusters),
+                        # SpectralClustering(n_clusters=n_clusters),
+                        # Birch(n_clusters=n_clusters),
+                        # DBSCAN(eps=0.75,min_samples=15),
+                    ],
+                )
+            ],
+            worker_sinks=[
+                TSNEVisualizer("t-SNE plot"),
+                UMAPVisualizer("UMAP plot"),
+                TrainingEvaluator("Training evaluator"),
+                TrainingResultsExporter("results exporter")
+            ],
+            pipeline_sinks=[],
+        )
+    ).build_pipeline().run_pipeline(PipelineType.BATCH)
 
 def inference_pipeline():
     pass
@@ -102,12 +140,12 @@ def test_availability():
 
 
 def main():
-    # test_availability()
+    test_availability()
     
-    train_dir = Path("./dataset/train")
-    input_files_train = list(train_dir.glob("*.jpg")) + list(train_dir.glob("*.png")) + list(train_dir.glob("*.jpeg")) + list(train_dir.glob("*.heic"))
+    # train_dir = Path("./dataset/train")
+    # input_files_train = list(train_dir.glob("*.jpg")) + list(train_dir.glob("*.png")) + list(train_dir.glob("*.jpeg")) + list(train_dir.glob("*.heic"))
 
-    feature_extraction_pipeline(input_files_train)
+    # feature_extraction_pipeline(input_files_train)
 
     embeddings_retinaface_mnet025_arcface_w600k_mbf_cleaned = Path(core.paths.output / "feature_extraction_pipeline_1" / "embeddings_retinaface_mnet025_arcface_w600k_mbf_cleaned.parquet")
     embeddings_retinaface_mnet050_arcface_w600k_mbf_cleaned = Path(core.paths.output / "feature_extraction_pipeline_2" / "embeddings_retinaface_mnet050_arcface_w600k_mbf_cleaned.parquet")
@@ -116,12 +154,12 @@ def main():
         embeddings_retinaface_mnet050_arcface_w600k_mbf_cleaned
     ]
 
-    # evaluation_pipeline()
+    # evaluation_pipeline([embedding_retinaface_mnet050_arcface_w600k_mbf_cleaned])
+
+    training_pipeline(input_embeddings_files,13)
 
     test_dir = Path("./dataset/test")
     input_files_test = list(test_dir.glob("*.jpg")) + list(test_dir.glob("*.png")) + list(test_dir.glob("*.jpeg")) + list(test_dir.glob("*.heic"))
-
-    # training_pipeline(input_files_test[:15])
 
     # inference_pipeline()
 

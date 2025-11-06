@@ -192,6 +192,7 @@ class Pipeline:
         p_path = self.pipeline_storage.pipeline_path
         # https://superfastpython.com/processpoolexecutor-map-vs-submit/
         with ProcessPoolExecutor(
+            max_workers=2,
             initializer=worker_init, 
             initargs=(components, sinks, p_path)
         ) as executor:

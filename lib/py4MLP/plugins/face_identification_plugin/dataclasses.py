@@ -5,13 +5,13 @@ import numpy as np
 from pathlib import Path
 import pandas as pd
 
-
 class Keys(Enum):
     ANNOTATED_RECORDS = "ANNOTATED_RECORDS" 
     IMAGES_RECORDS = "IMAGES_RECORDS"
     FACE_RECORDS = "FACE_RECORDS"
     EMBEDDINGS_RECORDS = "EMBEDDINGS_RECORDS"
     GLOBAL_RECORDS = "GLOBAL_RECORDS"
+    TRAINING_RECORDS = "TRAINING_RECORDS"
     AGGREGATED_DF = "AGGREGATED_DF"
     PLOTS = "PLOTS"
 
@@ -124,16 +124,34 @@ class ImageClassifiedMessage:
 class Embeddings:
     source: Path =  field(default_factory=None)
     embeddings: pd.DataFrame = field(default_factory=pd.DataFrame)
+    labels: Optional[np.ndarray] = None
 
 @dataclass
 class NormalizedEmbeddings:
     source: Path =  field(default_factory=None)
     embeddings: pd.DataFrame = field(default_factory=pd.DataFrame)
 
-
+# ////////////////////////////////////////////////////////////////////////////////////////////////////////////
 @dataclass
 class ClusterEvaluationData:
     inertias: list[float] = field(default_factory=list)
     silhouette_scores: np.ndarray | None = None
     optimal_k_inertia: int | None = None
     optimal_k_silhouette: int | None = None
+
+# ////////////////////////////////////////////////////////////////////////////////////////////////////////////
+
+# ////////////////////////////////////////////////////////////////////////////////////////////////////////////
+@dataclass
+class TrainedModel:
+    model_name: str = field(default_factory=None)
+    model: Any =  field(default_factory=None)
+    training_time: int = field(default_factory=None)
+
+@dataclass
+class TrainingResults:
+    embeddings: NormalizedEmbeddings =  field(default_factory=None)
+    models: list[TrainedModel] =  field(default_factory=None)
+    
+      
+

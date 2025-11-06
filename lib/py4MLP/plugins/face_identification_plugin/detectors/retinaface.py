@@ -18,17 +18,35 @@ from uniface.common import (
 
 class RetinaFaceWeights(str, Enum):
     MNET_025 = "retinaface_mnet025"
-    """model based on MobileNetV1 architecture with width multiplier 0.25"""
+    """
+        model based on MobileNetV1 architecture. 
+        Width multiplier 0.25 controlling the model's size and speed-accuracy 
+        (Only 25% of the original MobileNetV1 channels)
+        fastest and most lightweight of all but the least accurate
+    """
     MNET_050 = "retinaface_mnet050"
-    """model based on MobileNetV1 architecture with width multiplier 0.50"""
+    """
+        model based on MobileNetV1 architecture. 
+        Width multiplier 0.5 controlling the model's size and speed-accuracy 
+        (Only 50% of the original MobileNetV1 channels)
+    """
     MNET_V1  = "retinaface_mnet_v1"
-    """model based on MobileNetV1 architecture"""
+    """
+        model based on MobileNetV1 architecture.
+        Standard backbone used in retinaface
+    """
     MNET_V2  = "retinaface_mnet_v2"
-    """model based on MobileNetV2 architecture"""
+    """
+        model based on MobileNetV2 architecture
+    """
     RESNET18 = "retinaface_r18"
-    """model based on ResNet18 architecture"""
+    """
+        model based on ResNet18 architecture
+    """
     RESNET34 = "retinaface_r34"
-    """model based on ResNet34 architecture"""
+    """
+        model based on ResNet34 architecture
+    """
 
 
 MODEL_URLS: Dict[RetinaFaceWeights, str] = {
@@ -97,6 +115,8 @@ class RetinaFaceDetector(FaceDetector):
 
     def _lazy_init(self):
         if not self.initialized:
+            # either use onnxruntime's preload_dlls() method (newer versions)
+            # or import torch. 
             if self.device != "cpu":
                 ort.preload_dlls()
             providers = ["CPUExecutionProvider"] if self.device == "cpu" else ["CUDAExecutionProvider"]
