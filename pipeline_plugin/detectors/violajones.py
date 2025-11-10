@@ -5,7 +5,6 @@ import numpy as np
 
 from .base import FaceDetector
 from ..dataclasses import ImageMessage
-from ..utils.model_backend import BackendType
 from ..utils.model_store import verify_model_weights
 
 class CascadeType(Enum):
@@ -42,9 +41,7 @@ class ViolaJonesDetector(FaceDetector):
         model_name: CascadeType = CascadeType.FRONTALFACE_DEFAULT,
         input_size: int = (640, 640),
     ):
-        super().__init__(
-            BackendType.OPENCV
-        )
+        super().__init__()
         self.cascade_path = verify_model_weights(
             model_name=model_name,
             root=model_dir / "violajones",

@@ -8,30 +8,36 @@ import onnxruntime as ort
 
 
 from .base import FaceEmbedder
-from ..utils.model_backend import BackendType
 from ..dataclasses import FaceEmbeddingMessage, FaceMessage
 from ..utils.model_store import verify_model_weights
 
 class ArcFaceWeights(str, Enum):
-    W600K_MBF = "arcface_w600k_mbf"
+    MBF = "arcface__mbf"
     """
         model based on MobileFaceNet architecture.
-        W600K (webface 600,000 identities) dataset used for training
+        W600K (webface 600,000 identities and 12 million images) dataset used for training
     """
-    W600K_R50 = "arcface_w600k_r50"
+    RESNET50 = "arcface__r50"
     """
         model based on ResNet50 architecture. 
-        W600K (webface 600,000 identities) dataset used for training
+        W600K (webface 600,000 identities and 12 million images) dataset used for training
+    """
+    RESNET100 = "arcface__r100"
+    """
+        model based on the ResNet100 architecture.
+        Refined MS-Celeb-1M (3.8 million images from 85000 identities)
     """
 
 MODEL_URLS: Dict[ArcFaceWeights, str] = {
-    ArcFaceWeights.W600K_MBF: 'https://huggingface.co/WePrompt/buffalo_sc/resolve/main/w600k_mbf.onnx?download=true',
-    ArcFaceWeights.W600K_R50: 'https://huggingface.co/maze/faceX/resolve/main/w600k_r50.onnx?download=true',
+    ArcFaceWeights.MBF:  'https://huggingface.co/WePrompt/buffalo_sc/resolve/main/w600k_mbf.onnx?download=true',
+    ArcFaceWeights.RESNET50:  'https://huggingface.co/maze/faceX/resolve/main/w600k_r50.onnx?download=true',
+    ArcFaceWeights.RESNET100: 'https://huggingface.co/onnxmodelzoo/arcfaceresnet100-8/resolve/main/arcfaceresnet100-8.onnx?download=true',
 }
 
 MODEL_SHA256: Dict[ArcFaceWeights, str] = {
-    ArcFaceWeights.W600K_MBF: '9cc6e4a75f0e2bf0b1aed94578f144d15175f357bdc05e815e5c4a02b319eb4f',
-    ArcFaceWeights.W600K_R50: '4c06341c33c2ca1f86781dab0e829f88ad5b64be9fba56e56bc9ebdefc619e43',
+    ArcFaceWeights.MBF:  '9cc6e4a75f0e2bf0b1aed94578f144d15175f357bdc05e815e5c4a02b319eb4f',
+    ArcFaceWeights.RESNET50:  '4c06341c33c2ca1f86781dab0e829f88ad5b64be9fba56e56bc9ebdefc619e43',
+    ArcFaceWeights.RESNET100: 'f3a6bc281e72f88862f5748b53be3d76b3b48f8f1ab1f4a537941bdc4e1b01da',
 }
 
 CHUNK_SIZE = 8192
@@ -41,12 +47,9 @@ class ArcFaceEmbedder(FaceEmbedder):
     def __init__(
         self, 
         model_dir: str, 
-        model_name: ArcFaceWeights = ArcFaceWeights.W600K_MBF,
+        model_name: ArcFaceWeights = ArcFaceWeights.MBF,
         device: str = "cpu",
     ):
-        super().__init__(
-            backend=BackendType.ONNX
-        )
         # download model from URL
         self.model_path = verify_model_weights(
             model_name=model_name,
@@ -90,14 +93,14 @@ class ArcFaceEmbedder(FaceEmbedder):
         return face 
     
     def postprocess(self, embedding: np.ndarray):
-        return (embedding / np.linalg.norm(embedding)).flatten()
+        return (embedding / np.linalg.norm(embedding))
 
     def embed_face(self, message: FaceMessage) -> np.ndarray:
         self._lazy_init()
         face_img = self.preprocess(message.face_image.image)
         embedding = self.session.run(None, {self.input_name: face_img})[0]
-        embedding = self.postprocess(embedding)
-        return embedding
+        # self.postprocess(embedding)
+        return embedding.flatten()
     
     def settings(self):
         return {

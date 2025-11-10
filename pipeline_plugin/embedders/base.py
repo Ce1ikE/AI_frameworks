@@ -1,14 +1,12 @@
 from ..dataclasses import FaceMessage, FaceEmbeddingMessage
-from ..utils.model_backend import BackendMixin, BackendType
 from abc import abstractmethod
 import numpy as np
 
-class FaceEmbedder(BackendMixin):
+class FaceEmbedder:
     task: str = "face_embedding"
 
-    def __init__(self, backend: BackendType = BackendType.ONNX):
-        self.backend = backend
-        super().__init__()
+    def __init__(self):
+        pass
 
     @abstractmethod
     def embed_face(self, face: FaceMessage) -> np.ndarray:
@@ -17,6 +15,5 @@ class FaceEmbedder(BackendMixin):
     
     def settings(self) -> dict:
         return {
-            "backend": self.backend.value,
             "task": self.task
         }

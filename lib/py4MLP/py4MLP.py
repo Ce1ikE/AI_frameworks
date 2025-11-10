@@ -15,7 +15,6 @@
 PIPELINE_DIR = "py4MLP_pipelines"
 DEFAULT_CONFIG_FILE = "py4MLP_config.toml"
 
-import datetime as dt 
 from pathlib import Path
 
 class PathsConfig:
@@ -29,14 +28,13 @@ class Py4MLP:
     Core class to initialize the pipeline library components.
     """
     @classmethod
-    def __init__(cls, entrypoint: str, enable_logging: bool = True):
-        cls.entrypoint = entrypoint
+    def __init__(cls, enable_logging: bool = True):
+        import os
+        cls.entrypoint = os.getcwd()
         cls.paths = PathsConfig()
-        
         cls.parse_arguments()
         cls.parse_config()
         cls.setup_paths()
-
         if enable_logging:
             cls.setup_logging()
     
@@ -52,8 +50,9 @@ class Py4MLP:
 
     @classmethod
     def setup_logging(cls):
-        import logging
         import sys
+        import logging
+        import datetime as dt 
         timestamp = dt.datetime.now().strftime("%Y%m%d_%H%M%S")
         log_file = Path(Py4MLP.paths.logs / f"log__{timestamp}.log")
         logging.basicConfig(
@@ -61,8 +60,8 @@ class Py4MLP:
             level=logging.INFO,
             format='[%(levelname)s] - [%(asctime)s] %(message)s',
             handlers=[
-                # logging.FileHandler(log_file,mode="w"),
-                # logging.StreamHandler(stream=sys.stdout)
+                logging.FileHandler(log_file,mode="w"),
+                logging.StreamHandler(stream=sys.stdout)
             ]
         )
         cls.logger = logging.getLogger(__name__)
@@ -70,6 +69,8 @@ class Py4MLP:
 
     @classmethod
     def setup_paths(cls):
+        # preferably we want to setup the output directory outside the the cwd
+        # so we move one up and   
         cls.entrypoint_dir = Path(cls.entrypoint).resolve().parent
         cls.pipeline_library_dir = cls.entrypoint_dir / PIPELINE_DIR
         cls.pipeline_library_dir.mkdir(parents=True, exist_ok=True)
@@ -85,5 +86,30 @@ class Py4MLP:
         except KeyError as e:
             raise ValueError(f"Missing configuration key: {e}")
 
+    @classmethod
+    def test_availability():
+        import torch, onnxruntime, os, shutil, subprocess
 
+        print("=== GPU Diagnostic ===")
+        print("Torch CUDA available:", torch.cuda.is_available())
+        if torch.cuda.is_available():
+            print("Torch device:", torch.cuda.get_device_name(0))
+        else:
+            print("Torch device: None")
 
+        print("\nONNX Runtime providers:", onnxruntime.get_available_providers())
+        # ONNX runtime allows us to use pytorch's (with cuda support) CUDA and cuDNN dll's 
+        # because they are included with the package
+        # https://onnxruntime.ai/docs/execution-providers/CUDA-ExecutionProvider.html#compatibility-with-pytorch
+        
+        try:
+            onnxruntime.preload_dlls()
+        except Exception as e:
+            print(e)
+
+        print("\nSystem PATH contains CUDA:", any("CUDA" in p for p in os.environ["PATH"].split(";")))
+
+        nvcc = shutil.which("nvcc")
+        print("nvcc found:", nvcc)
+        if nvcc:
+            subprocess.run(["nvcc", "--version"])  

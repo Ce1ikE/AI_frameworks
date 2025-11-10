@@ -30,7 +30,7 @@ class PipelineStorage:
         return self.pipeline_path
 
     def make_sample_storage(self,sample_id: int):
-        sample_dir = self.pipeline_path / f"sample_{sample_id:03d}"
+        sample_dir = self.pipeline_path / "Samples" / f"sample_{sample_id:03d}"
         sample_dir.mkdir(parents=True, exist_ok=True)
         self.sample_storage[sample_id] = _SampleStorage(
             sample_dir=sample_dir,
