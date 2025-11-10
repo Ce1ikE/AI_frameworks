@@ -5,15 +5,26 @@ import numpy as np
 from pathlib import Path
 import pandas as pd
 
-
-class Keys(Enum):
+class WorkerKeys(Enum):
     ANNOTATED_RECORDS = "ANNOTATED_RECORDS" 
-    IMAGES_RECORDS = "IMAGES_RECORDS"
-    FACE_RECORDS = "FACE_RECORDS"
-    EMBEDDINGS_RECORDS = "EMBEDDINGS_RECORDS"
-    GLOBAL_RECORDS = "GLOBAL_RECORDS"
-    AGGREGATED_DF = "AGGREGATED_DF"
-    PLOTS = "PLOTS"
+    TRAINING_RECORDS = "TRAINING_RECORDS"
+    EXTRACTION_RECORDS = "IMAGE_RESULTS_RECORDS"
+
+class PipelineKeys(Enum):
+    AGGREGATED_RECORDS = "AGGREGATED_RECORDS" 
+    REPORT_RECORDS = "REPORT_RECORDS"
+
+class ExportKeys(Enum):
+    IMAGE_NAME = "image_name" 
+    FACE_INDEX = "face_index" 
+    EMBEDDING = "embedding" 
+    EMBEDDING_NORM = "embedding_norm" 
+    EMBEDDING_NORMALIZED = "embedding_normalized"
+    BBOX = "bbox" 
+    LANDMARKS = "landmarks" 
+    CONFIDENCE_SCORE = "confidence_score" 
+    FACE_IMAGE = "face_image" 
+    LABEL = "label"
 
 @dataclass
 class BoundingBox:
@@ -125,15 +136,17 @@ class Embeddings:
     source: Path =  field(default_factory=None)
     embeddings: pd.DataFrame = field(default_factory=pd.DataFrame)
 
+# ////////////////////////////////////////////////////////////////////////////////////////////////////////////
 @dataclass
-class NormalizedEmbeddings:
-    source: Path =  field(default_factory=None)
-    embeddings: pd.DataFrame = field(default_factory=pd.DataFrame)
-
+class TrainedModel:
+    model_name: str = field(default_factory=None)
+    model: Any =  field(default_factory=None)
+    training_time: int = field(default_factory=None)
 
 @dataclass
-class ClusterEvaluationData:
-    inertias: list[float] = field(default_factory=list)
-    silhouette_scores: np.ndarray | None = None
-    optimal_k_inertia: int | None = None
-    optimal_k_silhouette: int | None = None
+class TrainingResults:
+    embeddings: Embeddings =  field(default_factory=None)
+    models: list[TrainedModel] =  field(default_factory=None)
+    
+      
+

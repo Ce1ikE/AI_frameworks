@@ -3,12 +3,14 @@ from .component import *
 import sys
 import os
 import queue
+import traceback
+import threading
+
+from enum import Enum
 from typing import Type
 from collections import defaultdict
-import threading
 from dataclasses import is_dataclass
-from enum import Enum
-import traceback
+
 
 class Bus:
     def __init__(self):
@@ -84,3 +86,4 @@ class DataBus(Bus):
 
             finally:
                 self.queue.task_done()
+

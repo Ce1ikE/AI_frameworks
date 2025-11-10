@@ -11,18 +11,21 @@ class SCRFDWeights(str, Enum):
     SCRFD_1G = "scrfd_1g"
     SCRFD_2G = "scrfd_2g"
     SCRFD_10G = "scrfd_10g"
+    SCRFD_34G = "scrdf_34g"
 
 MODEL_URLS: Dict[SCRFDWeights, str] = {
     SCRFDWeights.SCRFD_500M: 'https://github.com/yakhyo/face-reidentification/releases/download/v0.0.1/det_2.5g.onnx',
     SCRFDWeights.SCRFD_1G: 'https://github.com/yakhyo/face-reidentification/releases/download/v0.0.1/det_1g.onnx',
     SCRFDWeights.SCRFD_2G: 'https://github.com/yakhyo/face-reidentification/releases/download/v0.0.1/det_2g.onnx',
-    SCRFDWeights.SCRFD_10G: 'https://github.com/yakhyo/face-reidentification/releases/download/v0.0.1/det_10g.onnx',
+    SCRFDWeights.SCRFD_10G: 'https://huggingface.co/kunkunlin1221/face-detection_scrfd-10g-gnkps/raw/main/scrfd_10g_gnkps_fp32.onnx',
+    SCRFDWeights.SCRFD_34G: 'https://huggingface.co/immich-app/scrfd_34g_gnkps/raw/main/detection/model.onnx',
 }
 MODEL_SHA256: Dict[SCRFDWeights, str] = {
     SCRFDWeights.SCRFD_500M: '',
     SCRFDWeights.SCRFD_1G: '',
     SCRFDWeights.SCRFD_2G: '',
-    SCRFDWeights.SCRFD_10G: '',
+    SCRFDWeights.SCRFD_10G: '2112d066c1dce6cc648670e69cf90561b9287bb1945153f3b461a487131255b9',
+    SCRFDWeights.SCRFD_34G: 'aa19f0e7f4d120d4cf990086639ab74a0136adceaebd232e0dc4745e0cfd4257',
 }
 CHUNK_SIZE = 8192
 
@@ -34,7 +37,7 @@ class SCRFDDetector(FaceDetector):
         model_name: SCRFDWeights = SCRFDWeights.SCRFD_2G,
         device: str = "cpu",
     ):
-        super().__init__(__class__.__name__ if model_name is None else model_name)
+        super().__init__()
 
         self.model_path = verify_model_weights(
             model_name=model_name,

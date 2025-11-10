@@ -1,8 +1,8 @@
+from .pipeline_utilities import PipelineStorage
+
 from typing import Any
 from pathlib import Path
-from .pipeline_utilities import PipelineStorage
 from collections import defaultdict
-
 
 class BaseComponent:
     def __init__(self, name: str):

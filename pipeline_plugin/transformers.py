@@ -3,11 +3,12 @@ from pathlib import Path
 import pandas as pd
 import numpy as np
 import cv2
+from sklearn.base import BaseEstimator, ClusterMixin
 
-from ...core.component import *
-from ...core.pipeline import *
-from ...core.bus import *
-from .utils.util_functions import *
+from lib.py4MLP.core.component import *
+from lib.py4MLP.core.pipeline import *
+from lib.py4MLP.core.bus import *
+from .utils.util_classes import *
 
 from .transformers import *
 from .dataclasses import *
@@ -30,7 +31,6 @@ class ImageFileLoader(Source):
         self.data = data 
 
     def process(self):
-        data_result = []
         for image_path in self.data:
             image_path: Path = Path(image_path)
             if not image_path.is_file():
@@ -56,8 +56,7 @@ class ImageFileLoader(Source):
             if image is None:
                 raise ValueError(f"Failed to load image: {image_path}")
 
-            data_result.append(ImageMessage(path=image_path, image=image))
-        return data_result
+            yield ImageMessage(path=image_path, image=image)
 
     def settings(self):
         return {
@@ -201,9 +200,6 @@ class EmbeddingFileLoader(Source):
             data: Path = Path(data)
             try:
                 df = pd.read_parquet(data)
-                if "sample_id" not in df.columns or "embedding" not in df.columns or "face_path" not in df.columns:
-                    raise ValueError(f"Invalid parquet format in {data}, expected columns: ['sample_id', 'embedding', 'face_path']")
-
             except Exception as e:
                 raise ValueError(f"Failed to load embeddings from {data}: {e}")
 
@@ -217,87 +213,90 @@ class EmbeddingFileLoader(Source):
         }
 
 # ////////////////////////////////////////////////////////////////////////////////////////////////////////////
-class EmbeddingNormalizer(Transformer):
-    def __init__(self, name: str):
+class EmbeddingTrainer(Transformer):
+    def __init__(self, name: str, algorithms: list[BaseEstimator | ClusterMixin]):
         super().__init__(name)
+        self.algorithms = algorithms
 
     def process(self, data: Embeddings):
         try:
-            embeddings = data.embeddings
+            df = data.embeddings
         except Exception as e:
-            raise ValueError("Embeddings not found for normalization") from e
+            raise ValueError("Embeddings not found for training") from e
+        if df is None or len(df) == 0:
+            raise ValueError("No embeddings available for training")
 
-        if embeddings is None or len(embeddings) == 0:
-            raise ValueError("No embeddings available for normalization")
+        key = ExportKeys.EMBEDDING_NORMALIZED.value
+        if key not in df.columns:
+            print("Normalizing embeddings...")
+            # (N, D) matrix
+            raw_embeddings = np.vstack(df[ExportKeys.EMBEDDING.value].values)
+            norms = np.linalg.norm(raw_embeddings, axis=1, keepdims=True)
+            norms[norms == 0] = 1e-10  # avoid divide by zero
+            normalized = raw_embeddings / norms
+            df[key] = list(normalized)
+            df[ExportKeys.EMBEDDING.value] = list(normalized)
+            embeddings = normalized
+        else:
+            print("Found normalized embeddings in dataframe.")
+            embeddings = np.vstack(df[key].values)
+        
 
-        embeddings = embeddings['embedding'].tolist()
-        X = np.asarray(embeddings, dtype=np.float32)
-        norms = np.linalg.norm(X, axis=1)
-        print(f"Average norm before normalization: {norms.mean():.3f}")
-        
-        if norms.mean() == 1:
-            return NormalizedEmbeddings(
-                source=data.source,    
-                embeddings=data.embeddings
-            )
-        
-        from sklearn.preprocessing import Normalizer
-        normalizer = Normalizer(norm='l2')
-        norm_embeddings = normalizer.fit_transform(X)
-        data.embeddings['embedding'] = pd.Series(norm_embeddings)
-        
-        return NormalizedEmbeddings(
-            source=data.source,    
-            embeddings=norm_embeddings
+        training_times = []
+        for alg in self.algorithms:
+            print(f'Training {alg.__class__.__name__} ...')
+            start_time =  dt.datetime.now()
+            labels = alg.fit_predict(embeddings)
+            end_time = dt.datetime.now()
+            df[alg.__class__.__name__] = labels
+            time_diff = end_time - start_time
+            training_times.append(time_diff.total_seconds())
+            print(f'Training finished for {alg.__class__.__name__}')
+
+        return TrainingResults(
+            embeddings=Embeddings(
+                source=data.source,
+                embeddings=df,
+            ),
+            models=[
+                TrainedModel(
+                    model=alg,
+                    model_name=alg.__class__.__name__,
+                    training_time=train_time_alg
+                ) 
+                for train_time_alg, alg in zip(training_times,self.algorithms)
+            ]
         )
 
     def settings(self):
         return {
-            "normalizer": self.__class__.__name__,
-            "norm": "l2"
+            "trained_algorithms" : [{algorithm.__class__.__name__ : algorithm.get_params()} for algorithm in self.algorithms],
         }
 
 # ////////////////////////////////////////////////////////////////////////////////////////////////////////////
-class EmbeddingTrainer(Transformer):
-
-    class Algorithm(Enum):
-        KMEANS = "kmeans"
-        HDBSCAN = "hdbscan"
-        OPTICS = "optics"
-        AGGLOMERATIVE = "agglomerative"
-        MEAN_SHIFT = "mean_shift"
-        DBSCAN = "dbscan"
-        SPECTRAL = "spectral"
-        BIRCH = "birch"
-        SVM = "svm"
-        RANDOM_FOREST = "random_forest"
-
-    def __init__(self, name: str, algorithm: Algorithm = Algorithm.KMEANS, n_clusters: int = 10):
+class EmbeddingClassifier(Transformer):
+    def __init__(self, name, classifier: FaceClassifier):
         super().__init__(name)
-        self.algorithm = algorithm
-        self.n_clusters = n_clusters
+        Utils.validate_instance(classifier, FaceClassifier, "classifier")
+        self.classifier = classifier
 
-    def process(self, data: NormalizedEmbeddings):
-        try:
-            embeddings = data.embeddings
-        except Exception as e:
-            raise ValueError("Embeddings not found for training") from e
-        
-        if embeddings is None or len(embeddings) == 0:
-            raise ValueError("No embeddings available for training")
+    def process(self, data: ImageEmbeddingMessage):
+        classifications: list[FaceClassifiedMessage] = []
+        for embedding_message in data.embeddings:
+            emb_normalized = embedding_message.embedding / np.linalg.norm(embedding_message.embedding)
+            classifications.append(
+                FaceClassifiedMessage(
+                    label=self.classifier.predict(emb_normalized),
+                    embedding=embedding_message
+                )
+            )
 
-        # Check if the embeddings DataFrame contains the necessary for supervised training
-        # For unsupervised training, this check can be skipped or modified accordingly
-        if self.algorithm in {
-            self.Algorithm.SVM,
-        }:
-            training_type = "unsupervised"
-        else:
-            training_type = "supervised"
-
-
-        
-
-        # placeholder for training logic
-        # e.g., clustering, classifier training, etc.
-
+        return ImageClassifiedMessage(
+            original_image=data.original_image,
+            classifications=classifications
+        )
+    
+    def settings(self):
+        return {
+            "classifier" : self.classifier.settings()
+        }

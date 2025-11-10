@@ -5,7 +5,6 @@ from typing import Dict, Literal
 import onnxruntime as ort
 
 from .base import FaceDetector
-from ..utils.model_backend import BackendType
 from ..utils.model_store import verify_model_weights
 from ..dataclasses import ImageMessage
 from uniface.common import (
@@ -18,17 +17,35 @@ from uniface.common import (
 
 class RetinaFaceWeights(str, Enum):
     MNET_025 = "retinaface_mnet025"
-    """model based on MobileNetV1 architecture with width multiplier 0.25"""
+    """
+        model based on MobileNetV1 architecture. 
+        Width multiplier 0.25 controlling the model's size and speed-accuracy 
+        (Only 25% of the original MobileNetV1 channels)
+        fastest and most lightweight of all but the least accurate
+    """
     MNET_050 = "retinaface_mnet050"
-    """model based on MobileNetV1 architecture with width multiplier 0.50"""
+    """
+        model based on MobileNetV1 architecture. 
+        Width multiplier 0.5 controlling the model's size and speed-accuracy 
+        (Only 50% of the original MobileNetV1 channels)
+    """
     MNET_V1  = "retinaface_mnet_v1"
-    """model based on MobileNetV1 architecture"""
+    """
+        model based on MobileNetV1 architecture.
+        Standard backbone used in retinaface
+    """
     MNET_V2  = "retinaface_mnet_v2"
-    """model based on MobileNetV2 architecture"""
+    """
+        model based on MobileNetV2 architecture
+    """
     RESNET18 = "retinaface_r18"
-    """model based on ResNet18 architecture"""
+    """
+        model based on ResNet18 architecture
+    """
     RESNET34 = "retinaface_r34"
-    """model based on ResNet34 architecture"""
+    """
+        model based on ResNet34 architecture
+    """
 
 
 MODEL_URLS: Dict[RetinaFaceWeights, str] = {
@@ -69,9 +86,7 @@ class RetinaFaceDetector(FaceDetector):
         score_metric: Literal["default", "max"] = "default",
         center_weight: float = 2.0
     ):
-        super().__init__(
-            backend=BackendType.ONNX
-        )
+        super().__init__()
         self.model_path = verify_model_weights(
             model_name=model_name,
             root=model_dir / "retinaface",
@@ -97,6 +112,8 @@ class RetinaFaceDetector(FaceDetector):
 
     def _lazy_init(self):
         if not self.initialized:
+            # either use onnxruntime's preload_dlls() method (newer versions)
+            # or import torch. 
             if self.device != "cpu":
                 ort.preload_dlls()
             providers = ["CPUExecutionProvider"] if self.device == "cpu" else ["CUDAExecutionProvider"]
@@ -196,7 +213,6 @@ class RetinaFaceDetector(FaceDetector):
             "model": self.model_name.value,
             "device": self.device,
             "target_size": self.target_size,
-            "backend": self.backend.name,
             "confidence_threshold": self.confidence_threshold,
             "nms_threshold": self.nms_threshold,
             "onnx_runtime_version": getattr(ort, "__version__", "N/A"),
