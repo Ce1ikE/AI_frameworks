@@ -93,13 +93,14 @@ class ArcFaceEmbedder(FaceEmbedder):
         return face 
     
     def postprocess(self, embedding: np.ndarray):
-        return (embedding / np.linalg.norm(embedding)).flatten()
+        return (embedding / np.linalg.norm(embedding))
 
     def embed_face(self, message: FaceMessage) -> np.ndarray:
         self._lazy_init()
         face_img = self.preprocess(message.face_image.image)
         embedding = self.session.run(None, {self.input_name: face_img})[0]
-        return self.postprocess(embedding)
+        # self.postprocess(embedding)
+        return embedding.flatten()
     
     def settings(self):
         return {

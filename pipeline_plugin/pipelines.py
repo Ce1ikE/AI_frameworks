@@ -1,9 +1,12 @@
 
 from lib.py4MLP.core.pipeline import *
+from lib.py4MLP.py4MLP import Py4MLP 
+
 from . import *
 from pipeline_plugin.detectors.retinaface import *
 from pipeline_plugin.embedders.arcface import *
-from lib.py4MLP.py4MLP import Py4MLP 
+
+RANDOM_STATE=42
 
 
 def feature_extraction_pipeline(input_files_train,output_path):
@@ -20,7 +23,7 @@ def feature_extraction_pipeline(input_files_train,output_path):
                     "Face detector",
                     RetinaFaceDetector(
                         model_dir=Py4MLP.paths.models,
-                        model_name=RetinaFaceWeights.MNET_025,
+                        model_name=RetinaFaceWeights.RESNET34,
                         confidence_threshold=0.7,
                         device="cuda"
                     )
@@ -60,7 +63,6 @@ def training_pipeline(input_embeddings_files,n_clusters,output_path):
         Birch
     )
     from sklearn.cluster._hdbscan.hdbscan import HDBSCAN        
-    RANDOM_STATE=42
 
     Pipeline(
         name="training pipeline",
@@ -73,7 +75,6 @@ def training_pipeline(input_embeddings_files,n_clusters,output_path):
                     algorithms=[
                         KMeans(n_clusters=n_clusters,random_state=RANDOM_STATE),
                         AgglomerativeClustering(n_clusters=n_clusters),
-                        SpectralClustering(n_clusters=n_clusters,random_state=RANDOM_STATE),
                     ],
                 )
             ],
@@ -88,7 +89,10 @@ def training_pipeline(input_embeddings_files,n_clusters,output_path):
         )
     ).build_pipeline().run_pipeline(PipelineType.BATCH,max_workers=None)
 
-def inference_pipeline(input_files_test,cluster_centers,output_path):
+def inference_pipeline(input_files_test,cluster_centers: dict,output_path):
+    worker_ex = WorkerExporter("worker results exporter")
+    worker_ex.input_type = [ImageClassifiedMessage]
+    
     Pipeline(
         name=f"inference pipeline",
         output_root=output_path,
@@ -98,8 +102,8 @@ def inference_pipeline(input_files_test,cluster_centers,output_path):
                 ImageFacesDetector(
                     "Face detector",
                     RetinaFaceDetector(
-                        model_dir=output_path,
-                        model_name=RetinaFaceWeights.MNET_025,
+                        model_dir=Py4MLP.paths.models,
+                        model_name=RetinaFaceWeights.RESNET34,
                         confidence_threshold=0.7,
                         device="cuda"
                     )
@@ -110,7 +114,7 @@ def inference_pipeline(input_files_test,cluster_centers,output_path):
                 ImageFacesEmbedder(
                     "Face embedder",
                     ArcFaceEmbedder(
-                        model_dir=output_path,
+                        model_dir=Py4MLP.paths.models,
                         model_name=ArcFaceWeights.RESNET50,
                         device="cuda"
                     )
@@ -125,10 +129,11 @@ def inference_pipeline(input_files_test,cluster_centers,output_path):
             ],
             worker_sinks=[
                 AnnotatedImageExporter("annotated image exporter"),
-                WorkerExporter("worker results exporter")
+                worker_ex,
             ],
             pipeline_sinks=[
                 WorkerAggregator("aggregator"),
+                InferenceEvaluator("inference eval"),
             ],
         )
     ).build_pipeline().run_pipeline(PipelineType.BATCH,max_workers=2)

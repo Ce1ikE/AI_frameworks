@@ -19,6 +19,7 @@ class ExportKeys(Enum):
     FACE_INDEX = "face_index" 
     EMBEDDING = "embedding" 
     EMBEDDING_NORM = "embedding_norm" 
+    EMBEDDING_NORMALIZED = "embedding_normalized"
     BBOX = "bbox" 
     LANDMARKS = "landmarks" 
     CONFIDENCE_SCORE = "confidence_score" 

@@ -1,8 +1,4 @@
 from pathlib import Path
-import matplotlib.pyplot as plt 
-import pprint
-import json
-import pandas as pd
 
 from lib.py4MLP.py4MLP import Py4MLP 
 core = Py4MLP(enable_logging=False)
@@ -15,23 +11,41 @@ input_files_train = list(train_dir.glob("*.jpg")) + list(train_dir.glob("*.png")
 test_dir = Path("./dataset/test")
 input_files_test = list(test_dir.glob("*.jpg")) + list(test_dir.glob("*.png")) + list(test_dir.glob("*.jpeg")) + list(test_dir.glob("*.heic"))
 embedding_files = [
-    Path("D:\\AI_frameworks\\py4MLP_pipelines\\results\\feature_extraction_pipeline_20251110_025053\\processing_results.parquet")
+    Path("D:\\AI_frameworks\\py4MLP_pipelines\\results\\feature_extraction_pipeline_20251110_044330\\processing_results.parquet"),
+    Path("D:\\AI_frameworks\\py4MLP_pipelines\\results\\feature_extraction_pipeline_20251110_044530\\processing_results.parquet"),
+    Path("D:\\AI_frameworks\\py4MLP_pipelines\\results\\feature_extraction_pipeline_20251110_045016\\processing_results.parquet")
 ]
+
 def main():
-    # feature_extraction_pipeline(input_files_train[:30],core.paths.output)
+    feature_extraction_pipeline(input_files_train,core.paths.output)
 
-    training_pipeline(embedding_files,n_clusters=12,output_path=core.paths.output)
+    # embedding_file = Path("D:\\AI_frameworks\\py4MLP_pipelines\\results\\training_pipeline_20251110_043531\\Samples\\sample_002\\trained_embeddings.parquet")
+    # df: pd.DataFrame = pd.read_parquet(embedding_file)    
+    # embedding_norms = df[ExportKeys.EMBEDDING_NORM.value].values
+    # embeddings = np.vstack(df[ExportKeys.EMBEDDING.value].values)
+    # faces = np.vstack(df[ExportKeys.FACE_IMAGE.value].values)
+    # PlotEmbeddings.norm_distribution(embedding_norms)
+    # PlotEmbeddings.plot_embeddings_2d(embeddings,50,faces)
     
-    # embedding_files = core.paths.output.glob("feature_extraction_pipeline*/*_cleaned.parquet")
+    # training_pipeline(embedding_files,n_clusters=12,output_path=core.paths.output)
+    
+    # if required drop cluster and create dictionary
+    # cluster_centers = Path("D:\\AI_frameworks\\py4MLP_pipelines\\results\\training_pipeline_20251110_051752\\Samples\\sample_003\\model_info.parquet")
+    # cluster_centers_df: pd.DataFrame = pd.read_parquet(cluster_centers) 
+    # kmeans_clusters = cluster_centers_df.iloc[0]["cluster_centers"]
+    # print(len(kmeans_clusters))
+    # label_to_name = {
 
-    # embedding_files = core.paths.output.glob("feature_extraction_pipeline*/*.parquet")
-    # filter(embedding_files)
+    # }
+    # cluster_centers_and_labels = {
+    #     name: kmeans_clusters[idx]
+    #     for idx, name in label_to_name.items()
+    # }
 
-    # df = pd.read_parquet("D:\\AI_frameworks\\py4MLP_pipelines\\results\\feature_extraction_pipeline_20251109_123233\\processing_results.parquet")
-    # df.info()
-    # img = Utils.decode_img(df[ExportKeys.FACE_IMAGE.value].iloc[0])
-    # cv2.imshow("Display",img)
-    # cv2.waitKey(0)
+    # inference_pipeline(input_files_test,cluster_centers_and_labels,core.paths.output)
+
+    # images = [path for path in Path("D:\\AI_frameworks\\py4MLP_pipelines\\results\\inference_pipeline_20251110_071947").rglob("*.jpg")]
+    # SlideShow.navigate_images(images)
 
 if __name__ == "__main__":
     main()

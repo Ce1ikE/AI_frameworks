@@ -17,39 +17,36 @@ class Metric(Enum):
 class MetricClassifier(FaceClassifier):
     def __init__(
         self, 
-        cluster_centers: list[np.ndarray], 
+        cluster_centers: dict[str,np.ndarray], 
         metric: Metric = Metric.EUCLIDEAN, 
         threshold: float = None,
 
     ):
         super().__init__()
         self.metric = metric
+        self.threshold = threshold
 
         if cluster_centers is None and len(cluster_centers) > 1:
             raise ValueError("Cluster centers cannot be None and there must be more then 1 cluster")
-        if threshold is not None and threshold < 0:
-            raise ValueError("Threshold must be non-negative")
-        if metric == Metric.COSINE and threshold is not None and (threshold < -1 or threshold > 1):
-            raise ValueError("Cosine similarity threshold must be in the range [-1, 1]")
-        
-        self.cluster_centers = cluster_centers
-        print("Cluster centers are of shape:")
-        for i,center in enumerate(self.cluster_centers):
-            print(f"({i})  {center.shape}")
-            if center.shape != (1,512):
-                center = center.reshape(1,-1)
-                print(f"({i})  {center.shape}")
-                self.cluster_centers[i] = center
-        self.threshold = threshold
+
+        if threshold is not None:
+            if metric == Metric.EUCLIDEAN and threshold < 0:
+                raise ValueError("Euclidean threshold must be >= 0")
+            if metric == Metric.COSINE and not (-1 <= threshold <= 1):
+                raise ValueError("Cosine threshold must be in [-1, 1]")
+
+
+        self.cluster_centers: dict[str,np.ndarray] = {}
+        for label, center in cluster_centers.items():
+            center = np.asarray(center).flatten()
+            if center.ndim != 1:
+                raise ValueError(f"Center for '{label}' must be 1D, got shape {center.shape}")
+            self.cluster_centers[label] = center
 
     def predict(self, embedding: np.ndarray) -> int:
-        embedding = np.array(embedding).flatten().reshape(1, -1) if embedding is not None else None
-        # classify using cluster centers and metric
-        # each center is a numpy array of shape (d,)
-        # where d is the dimension which means the requires the same dimensions
-        if self.cluster_centers is not None and embedding is not None:
-            if embedding.shape != self.cluster_centers[0].shape:
-                raise ValueError(f"Embedding dimension {embedding.shape} does not match cluster centers dimension {self.cluster_centers[0].shape}")
+        if embedding is None:
+            return "Unknown"
+        embedding = np.array(embedding).flatten()
 
         # first check every cluster center and compute the distance based on the metric provided
         # to the embedding then return the index of the closest center as the label
@@ -69,31 +66,41 @@ class MetricClassifier(FaceClassifier):
         # this makes it harder to distinguish between points and this certain metrics become less useful
         # for example in high dimensions the euclidean distance and cosine similarity becomes less useful because of the distance
         # the dot product takes into account both the magnitude and the direction of the vectors however makes it computationally more expensive
-
+        results: dict[str, float] = {}
         if self.metric and self.cluster_centers is not None and embedding is not None:
             cluster_distances = []
-            for center in self.cluster_centers:
-                center = center.reshape(1, -1)
+            for label, center in self.cluster_centers.items():
                 if self.metric == Metric.EUCLIDEAN:
                     # if we flip the sign then -1 * [0, inf] becomes [-inf, 0] which results in the higher the value the more similar
                     # and thus we can use argmax to find the closest center for all metrics
-                    dist = -1 * euclidean_distances(embedding, center)
+                    dist = float(np.linalg.norm(embedding - center))
+                    score = -dist
+                
                 elif self.metric == Metric.COSINE:
-                    dist = cosine_similarity(embedding, center)
+                    score = np.dot(embedding, center)
+
                 elif self.metric == Metric.DOT:
-                    dist = np.dot(embedding, center)
-                cluster_distances.append(dist)
+                    score = float(np.dot(embedding, center))
+                
+                results[label] = score
+
+            best_label = max(results, key=results.get)
+            best_score = results[best_label]
+
             # so once we have all distances we can find the closest center
             # but we also need to check if the distance is below a certain threshold
             # because if the distance is too high, we are likely dealing with an unknown face
             if self.threshold is not None:
-                min_distance = np.min(cluster_distances)
-                if min_distance > self.threshold:
-                    # unknown face
-                    return -1
-            return np.argmax(cluster_distances)
-        # unknown face
-        return -1  
+                if self.metric == Metric.EUCLIDEAN:
+                    # For Euclidean threshold is applied to raw distance
+                    actual_dist = -best_score
+                    if actual_dist > self.threshold:
+                        return "Unknown"
+                else:
+                    # Cosine/Dot -> higher is better
+                    if best_score < self.threshold:
+                        return "Unknown"
+            return best_label
     
     def settings(self):
         return {

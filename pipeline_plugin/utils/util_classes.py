@@ -137,3 +137,107 @@ class SlideShow:
         print(f"Remaining rows after filtering: {len(df)}")
         df.info()
         input(f"finished Processing {embedding_file.stem} (continue)")
+
+
+class PlotEmbeddings:
+    fontdict = {
+        "fontsize": 10,
+        "fontweight": "bold",
+        "fontfamily": "monospace",
+    }
+
+    @classmethod
+    def norm_distribution(cls,embedding_norms):
+        
+        fig = plt.figure(figsize=(10, 6))
+        plt.hist(embedding_norms, bins=100)
+        plt.title("Embedding Norm Distribution",  fontdict=cls.fontdict)
+        plt.xlabel("Frequency",  fontdict=cls.fontdict)
+        plt.ylabel("L2 Norm",  fontdict=cls.fontdict)
+        plt.grid(True, linestyle='--', alpha=0.5)
+        plt.tight_layout()
+        plt.savefig("norm_distr.svg",format="svg")
+        plt.close(fig)
+
+    @classmethod
+    def plot_embeddings_2d(cls,embeddings,perplexity,face_images):
+        
+        from sklearn.manifold import TSNE
+        if len(embeddings) <= perplexity:
+            raise ValueError("TSNE: perplexity is higher than number of samples")
+        tsne = TSNE(
+            n_components=2,
+            perplexity=perplexity,
+            max_iter=1000,
+            random_state=42
+        )
+        projections = tsne.fit_transform(embeddings)
+        plt.figure(figsize=(10,10))
+        plt.scatter(
+            projections[:,0],
+            projections[:,1],
+            s=12,
+            c=None,
+            alpha=0.9,
+            marker="o",
+            edgecolors="white",
+            linewidths=0.2
+        )
+        plt.title(f"Visualization (2D)", fontdict=cls.fontdict)
+        plt.xlabel(f"Dim 1", fontdict=cls.fontdict)
+        plt.ylabel(f"Dim 2", fontdict=cls.fontdict)
+        plt.grid(True, linestyle="--", alpha=0.7)
+        plt.tight_layout()
+        plt.savefig("tsne_Visualization.svg",format="svg")
+        plt.close()
+
+        from PIL import Image, ImageOps
+        label_colors = None
+        faces = face_images
+        # determine the range for x and y axes to properly place images
+        x_min, x_max = projections[:, 0].min(), projections[:, 0].max()
+        y_min, y_max = projections[:, 1].min(), projections[:, 1].max()
+        x_span = x_max - x_min
+        y_span = y_max - y_min
+        # each thumbnail is 3% of the span
+        thumb_frac = 0.05  
+        thumb_w = x_span * thumb_frac
+        thumb_h = y_span * thumb_frac
+        fig = plt.figure(figsize=(10, 10))
+        ax = plt.gca()
+
+        if label_colors is None:
+            colors = [ 0 for _ in range(len(projections))]
+        else:
+            colors = label_colors 
+
+        plt.title(f"Visualization with Face Thumbnails", fontdict=cls.fontdict)
+        plt.xlim(x_min, x_max)
+        plt.ylim(y_min, y_max)
+        plt.axis("off")
+        
+        for (x, y), img_bytes, color in zip(projections, faces,colors):
+            img = Utils.decode_img(img_bytes)
+            img = cv2.cvtColor(img, cv2.COLOR_BGR2RGB)
+            img = Image.fromarray(img)
+            img.thumbnail((40, 40), Image.Resampling.LANCZOS)
+
+            if label_colors is not None:
+                img = img.convert("RGBA")
+                new_color = tuple([int(channel*255) for channel in color])
+                img = ImageOps.expand(
+                    img, 
+                    border=5, 
+                    fill=new_color
+                )
+
+            ax.imshow(
+                img,
+                extent=(x - thumb_w/2, x + thumb_w/2, y - thumb_h/2, y + thumb_h/2),
+                zorder=2,
+                alpha=0.9
+            )
+
+        plt.tight_layout()
+        plt.savefig("tsne_2d_faces.svg", format="svg")
+        plt.close()

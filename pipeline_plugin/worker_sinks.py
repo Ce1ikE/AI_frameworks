@@ -87,13 +87,18 @@ class WorkerExporter(WorkerSink):
         if isinstance(data,ImageEmbeddingMessage):
             for idx, msg in enumerate(data.embeddings):
                 face_img = msg.face.face_image.image
+
+                norm_emb = np.linalg.norm(msg.embedding)
+                embedding_normalized = msg.embedding / norm_emb
+
                 rows.append({
                     # same for each image
                     ExportKeys.IMAGE_NAME.value : image_name, 
                     # different per face image
                     ExportKeys.FACE_INDEX.value : idx, 
                     ExportKeys.EMBEDDING.value : msg.embedding, 
-                    ExportKeys.EMBEDDING_NORM.value : float(np.linalg.norm(msg.embedding)), 
+                    ExportKeys.EMBEDDING_NORM.value : float(norm_emb), 
+                    ExportKeys.EMBEDDING_NORMALIZED.value : embedding_normalized, 
                     ExportKeys.BBOX.value : list(msg.face.detection.bbox.to_tuple()), 
                     ExportKeys.LANDMARKS.value : msg.face.detection.landmarks.tolist(), 
                     ExportKeys.CONFIDENCE_SCORE.value : float(msg.face.detection.score), 
@@ -103,19 +108,23 @@ class WorkerExporter(WorkerSink):
         if isinstance(data,ImageClassifiedMessage):
             for idx, msg in enumerate(data.classifications):
                 face_img = msg.embedding.face.face_image.image
+                norm_emb = np.linalg.norm(msg.embedding.embedding)
+                embedding_normalized = msg.embedding.embedding / norm_emb
+
                 rows.append({
                     # same for each image
                     ExportKeys.IMAGE_NAME.value : image_name, 
                     # different per face image
                     ExportKeys.FACE_INDEX.value : idx, 
                     ExportKeys.EMBEDDING.value : msg.embedding.embedding, 
-                    ExportKeys.EMBEDDING_NORM.value : float(np.linalg.norm(msg.embedding)), 
+                    ExportKeys.EMBEDDING_NORM.value : float(norm_emb), 
+                    ExportKeys.EMBEDDING_NORMALIZED.value : embedding_normalized, 
                     ExportKeys.BBOX.value : list(msg.embedding.face.detection.bbox.to_tuple()), 
                     ExportKeys.LANDMARKS.value : msg.embedding.face.detection.landmarks.tolist(), 
                     ExportKeys.CONFIDENCE_SCORE.value : float(msg.embedding.face.detection.score), 
                     ExportKeys.FACE_IMAGE.value : Utils.encode_img(face_img), 
-                    ExportKeys.LABEL.value : msg.label, 
-                })    
+                    ExportKeys.LABEL.value : msg.label 
+                })   
 
         if len(rows) != 0:
             path_to_file = self.sample_dir / f"{image_name}_results.parquet"

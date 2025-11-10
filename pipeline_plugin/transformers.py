@@ -220,23 +220,38 @@ class EmbeddingTrainer(Transformer):
 
     def process(self, data: Embeddings):
         try:
-            embeddings = data.embeddings
+            df = data.embeddings
         except Exception as e:
             raise ValueError("Embeddings not found for training") from e
-        if embeddings is None or len(embeddings) == 0:
+        if df is None or len(df) == 0:
             raise ValueError("No embeddings available for training")
 
-        df = data.embeddings
-        embeddings = np.vstack(df[ExportKeys.EMBEDDING.value].values)
+        key = ExportKeys.EMBEDDING_NORMALIZED.value
+        if key not in df.columns:
+            print("Normalizing embeddings...")
+            # (N, D) matrix
+            raw_embeddings = np.vstack(df[ExportKeys.EMBEDDING.value].values)
+            norms = np.linalg.norm(raw_embeddings, axis=1, keepdims=True)
+            norms[norms == 0] = 1e-10  # avoid divide by zero
+            normalized = raw_embeddings / norms
+            df[key] = list(normalized)
+            df[ExportKeys.EMBEDDING.value] = list(normalized)
+            embeddings = normalized
+        else:
+            print("Found normalized embeddings in dataframe.")
+            embeddings = np.vstack(df[key].values)
+        
 
         training_times = []
         for alg in self.algorithms:
+            print(f'Training {alg.__class__.__name__} ...')
             start_time =  dt.datetime.now()
             labels = alg.fit_predict(embeddings)
             end_time = dt.datetime.now()
             df[alg.__class__.__name__] = labels
             time_diff = end_time - start_time
             training_times.append(time_diff.total_seconds())
+            print(f'Training finished for {alg.__class__.__name__}')
 
         return TrainingResults(
             embeddings=Embeddings(
@@ -268,9 +283,10 @@ class EmbeddingClassifier(Transformer):
     def process(self, data: ImageEmbeddingMessage):
         classifications: list[FaceClassifiedMessage] = []
         for embedding_message in data.embeddings:
+            emb_normalized = embedding_message.embedding / np.linalg.norm(embedding_message.embedding)
             classifications.append(
                 FaceClassifiedMessage(
-                    label=self.classifier.predict(embedding_message.embedding),
+                    label=self.classifier.predict(emb_normalized),
                     embedding=embedding_message
                 )
             )

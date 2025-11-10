@@ -167,24 +167,24 @@ class EmbeddingEvaluator(PipelineSink):
 
         # ---------- norm distribution plot ---------- #
         fig = plt.figure(figsize=(10, 6))
-        plt.scatter(range(len(embedding_norms)), embedding_norms, s=15, alpha=0.9)
+        plt.hist(embedding_norms, bins=100)
         plt.title("Embedding Norm Distribution", fontdict=self.fontdict)
-        plt.xlabel("Samples", fontdict=self.fontdict)
-        plt.ylabel("Norm", fontdict=self.fontdict)
+        plt.xlabel("Frequency", fontdict=self.fontdict)
+        plt.ylabel("L2 Norm", fontdict=self.fontdict)
         plt.grid(True, linestyle='--', alpha=0.5)
         plt.tight_layout()
-        plt.savefig(save_dir / "embedding_norm_scatter.svg", format="svg")
+        plt.savefig(save_dir / "embedding_norm_distribution.svg", format="svg")
         plt.close(fig)
 
         # ---------- confidence score distribution plot ---------- #
         fig = plt.figure(figsize=(10, 6))
-        plt.scatter(range(len(scores)), scores, s=15, alpha=0.9)
+        plt.hist(scores, bins=50)
         plt.title("Confidence Score Distribution", fontdict=self.fontdict)
         plt.xlabel("Sample Index", fontdict=self.fontdict)
         plt.ylabel("Confidence Score", fontdict=self.fontdict)
         plt.grid(True, linestyle='--', alpha=0.5)
         plt.tight_layout()
-        plt.savefig(save_dir / "confidence_score_scatter.svg", format="svg")
+        plt.savefig(save_dir / "confidence_score_distribution.svg", format="svg")
         plt.close(fig)
 
         with open(save_dir / "evaluation_report.json", "w") as f:
@@ -230,6 +230,90 @@ class TrainingResultsAggregator(PipelineSink):
         print(f"[AggregatorReporter] Report saved at {report_path}")
 
 # ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+class InferenceEvaluator(PipelineSink):
+    def __init__(self, name):
+        super().__init__(name)
+        self.input_type = [
+            PipelineEventType.PIPELINE_FINISHED
+        ]
+
+    def process(self, event):
+        self.pipeline_storage.pipeline_ctx[PipelineKeys.AGGREGATED_RECORDS]
+        self.save_dir = self.pipeline_storage.pipeline_path
+
+        df: pd.DataFrame = pd.read_parquet(
+            self.pipeline_storage.pipeline_ctx.get(PipelineKeys.AGGREGATED_RECORDS, [])[0]
+        )
+        labels = df[ExportKeys.LABEL.value].values
+
+        self._create_cluster_picture(df,labels)
+        self._create_csv_sample(df)
+
+    def _create_csv_sample(self,df: pd.DataFrame):
+
+        df[ExportKeys.LABEL.value] = df[ExportKeys.LABEL.value].astype(str).str.lower()
+
+        # remove leading zeros from image_name
+        df[ExportKeys.IMAGE_NAME.value] = (
+            df[ExportKeys.IMAGE_NAME.value].astype(str).str.lstrip("0").replace("", "0").astype(int)
+        )
+
+        # extract bbox_x (left coordinate)
+        # bbox format expected: [x, y, w, h] or [x1, y1, x2, y2] - adjust if needed!
+        df["bbox_x"] = df[ExportKeys.BBOX.value].apply(lambda b: b[0])
+
+        # Sort by image_name and then by bbox_x (left to right)
+        df_sorted = df.sort_values(by=[ExportKeys.IMAGE_NAME.value, "bbox_x"])
+
+        # Group again but now respecting the sorted order
+        grouped = (
+            df_sorted.groupby(ExportKeys.IMAGE_NAME.value)[ExportKeys.LABEL.value]
+            .apply(lambda labels: ";".join(labels))  # joins in ordered sequence
+            .reset_index()
+        )
+
+        # rename to final output format
+        grouped.rename(columns={
+            ExportKeys.IMAGE_NAME.value: "image",
+            ExportKeys.LABEL.value: "label_name",
+        }, inplace=True)
+
+        # write CSV
+        grouped.to_csv(self.save_dir / "sample_submission.csv", index=False)
 
 
+    def _create_cluster_picture(self,df: pd.DataFrame,labels):
+        cluster_ids = np.unique(labels)
+        
+        # normal image is 112x112
+        for cluster_id in cluster_ids:
+            cluster_df = df[labels == cluster_id]
+            if len(cluster_df) == 0:
+                continue
+            
+            # determine grid size
+            n_images = len(cluster_df)
+            cols = 8
+            rows = int(np.ceil(n_images / cols))
 
+            fig, axes = plt.subplots(rows, cols, figsize=(cols * 2, rows * 2))
+            axes = np.array(axes).reshape(rows, cols)
+
+            fig.suptitle(f"Cluster {cluster_id}", fontsize=16)
+
+            for ax in axes.flatten():
+                ax.axis("off")
+
+            for idx, encoded_img in enumerate(cluster_df[ExportKeys.FACE_IMAGE.value]):
+
+                img = Utils.decode_img(encoded_img)
+                img = cv2.cvtColor(img, cv2.COLOR_BGR2RGB)
+                ax = axes.flatten()[idx]
+                ax.imshow(img)
+                ax.axis("off")
+
+            # Save PDF
+            pdf_path = self.save_dir / f"cluster_{cluster_id}.pdf"
+            fig.savefig(pdf_path, format="pdf", bbox_inches='tight')
+            plt.close(fig)
+            print(f"Saved: {pdf_path}")
