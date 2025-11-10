@@ -1,25 +1,28 @@
-from lib.py4MLP.py4MLP import Py4MLP 
-core = Py4MLP(entrypoint=__file__, enable_logging=False)
 
 from lib.py4MLP.core.pipeline import *
-from application import *
-from application.detectors.retinaface import *
-from application.embedders.arcface import *
+from . import *
+from pipeline_plugin.detectors.retinaface import *
+from pipeline_plugin.embedders.arcface import *
+from lib.py4MLP.py4MLP import Py4MLP 
 
-def feature_extraction_pipeline(input_files_train):
+
+def feature_extraction_pipeline(input_files_train,output_path):
     Pipeline(
         name=f"feature extraction pipeline",
-        output_root=core.paths.output,
-        source=ImageFileLoader("image loader",input_files_train),
+        output_root=output_path,
+        source=ImageFileLoader(
+            "image loader",
+            input_files_train
+        ),
         pipeline_spec=PipelineSpec(
             transfomers=[
                 ImageFacesDetector(
                     "Face detector",
                     RetinaFaceDetector(
-                        model_dir=core.paths.models,
+                        model_dir=Py4MLP.paths.models,
                         model_name=RetinaFaceWeights.MNET_025,
                         confidence_threshold=0.7,
-                        device="cpu"
+                        device="cuda"
                     )
                 ),
                 ImageFacesExtractor(
@@ -28,45 +31,25 @@ def feature_extraction_pipeline(input_files_train):
                 ImageFacesEmbedder(
                     "Face embedder",
                     ArcFaceEmbedder(
-                        model_dir=core.paths.models,
-                        model_name=ArcFaceWeights.W600K_MBF,
-                        device="cpu"
+                        model_dir=Py4MLP.paths.models,
+                        model_name=ArcFaceWeights.RESNET50,
+                        device="cuda"
                     )
                 )
             ],
             worker_sinks=[
                 AnnotatedImageExporter("annotated image exporter"),
-                CroppedFaceExporter("face image exporter"),
-                EmbeddingExporter("embeddings exporter")
+                WorkerExporter("worker results exporter")
             ],
             pipeline_sinks=[
-                DataAggregator("aggregator"),
-                ParquetExporter("parquet aggregator exporter"),
-                Reporter("reporter")
+                WorkerAggregator("worker results aggregator"),
+                EmbeddingEvaluator("embedding evaluator",neighbors=15,max_k=20),
+                DimensionalityVisualizer("dimensionality reducer visualizer")
             ],
         )
-    ).build_pipeline().run_pipeline(PipelineType.BATCH)
+    ).build_pipeline().run_pipeline(PipelineType.BATCH,max_workers=1)
 
-def evaluation_pipeline(input_embeddings_files):
-    Pipeline(
-        name="embeddings evaluation pipeline",
-        output_root=core.paths.output,
-        source=EmbeddingFileLoader("embedding loader", input_embeddings_files),
-        pipeline_spec=PipelineSpec(
-            transfomers=[
-                EmbeddingNormalizer("normalize embeddings"),
-            ],
-            worker_sinks=[
-                EmbeddingExporter("normalized embeddings exporter"),
-                EmbeddingEvaluator("embeddings evaluator"),
-                TSNEVisualizer("t-SNE plot"),
-                UMAPVisualizer("UMAP plot")
-            ],
-            pipeline_sinks=[],
-        )
-    ).build_pipeline().run_pipeline(PipelineType.BATCH)
-
-def training_pipeline(input_embeddings_files,n_clusters=13):
+def training_pipeline(input_embeddings_files,n_clusters,output_path):
     from sklearn.cluster import (
         KMeans,
         DBSCAN,
@@ -81,13 +64,12 @@ def training_pipeline(input_embeddings_files,n_clusters=13):
 
     Pipeline(
         name="training pipeline",
-        output_root=core.paths.output,
+        output_root=output_path,
         source=EmbeddingFileLoader("embedding loader", input_embeddings_files),
         pipeline_spec=PipelineSpec(
             transfomers=[
                 EmbeddingTrainer(
                     "model trainer",
-                    reduce_to=-1,
                     algorithms=[
                         KMeans(n_clusters=n_clusters,random_state=RANDOM_STATE),
                         AgglomerativeClustering(n_clusters=n_clusters),
@@ -96,28 +78,27 @@ def training_pipeline(input_embeddings_files,n_clusters=13):
                 )
             ],
             worker_sinks=[
-                TSNEVisualizer("t-SNE plot"),
-                # UMAPVisualizer("UMAP plot"),
+                TrainingResultsExporter("results exporter"),
                 TrainingEvaluator("Training evaluator"),
-                TrainingResultsExporter("results exporter")
+                DimensionalityVisualizer("dimensionality reducer visualizer"),
             ],
             pipeline_sinks=[
-                PipelineReporter("reporter")
+                TrainingResultsAggregator("Training aggregator"),
             ],
         )
     ).build_pipeline().run_pipeline(PipelineType.BATCH,max_workers=None)
 
-def inference_pipeline(input_files_test,cluster_centers):
+def inference_pipeline(input_files_test,cluster_centers,output_path):
     Pipeline(
         name=f"inference pipeline",
-        output_root=core.paths.output,
+        output_root=output_path,
         source=ImageFileLoader("image loader",input_files_test),
         pipeline_spec=PipelineSpec(
             transfomers=[
                 ImageFacesDetector(
                     "Face detector",
                     RetinaFaceDetector(
-                        model_dir=core.paths.models,
+                        model_dir=output_path,
                         model_name=RetinaFaceWeights.MNET_025,
                         confidence_threshold=0.7,
                         device="cuda"
@@ -129,8 +110,8 @@ def inference_pipeline(input_files_test,cluster_centers):
                 ImageFacesEmbedder(
                     "Face embedder",
                     ArcFaceEmbedder(
-                        model_dir=core.paths.models,
-                        model_name=ArcFaceWeights.W600K_MBF,
+                        model_dir=output_path,
+                        model_name=ArcFaceWeights.RESNET50,
                         device="cuda"
                     )
                 ),
@@ -144,14 +125,10 @@ def inference_pipeline(input_files_test,cluster_centers):
             ],
             worker_sinks=[
                 AnnotatedImageExporter("annotated image exporter"),
-                CroppedFaceExporter("face image exporter"),
-                EmbeddingExporter("embeddings exporter"),
-                ClassificationExporter("classification exporter")
+                WorkerExporter("worker results exporter")
             ],
             pipeline_sinks=[
-                DataAggregator("aggregator"),
-                ParquetExporter("parquet aggregator exporter"),
-                Reporter("reporter")
+                WorkerAggregator("aggregator"),
             ],
         )
     ).build_pipeline().run_pipeline(PipelineType.BATCH,max_workers=2)

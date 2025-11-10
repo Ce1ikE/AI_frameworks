@@ -13,7 +13,7 @@ from uniface.common import (
 
 from ..dataclasses import ImageMessage
 from ..utils.model_store import verify_model_weights
-from ..utils.util_functions import Utils
+from ..utils.util_classes import Utils
 
 class YuNetWeights(str, Enum):
     YUNET = "yunet.onnx"
@@ -39,7 +39,7 @@ class YuNetDetector(FaceDetector):
         confidence_threshold: float = 0.5,
         top_k: int = 5000,
     ):
-        super().__init__(__class__.__name__)
+        super().__init__()
 
         self.model_path = verify_model_weights(
             model_name, 

@@ -2,7 +2,6 @@ import logging
 from .base import FaceClassifier
 import numpy as np
 from enum import Enum
-from ..utils.model_backend import BackendType
 from sklearn.metrics.pairwise import (
     cosine_similarity, 
     euclidean_distances, 
@@ -23,9 +22,7 @@ class MetricClassifier(FaceClassifier):
         threshold: float = None,
 
     ):
-        super().__init__(
-            backend=BackendType.SKLEARN, 
-        )
+        super().__init__()
         self.metric = metric
 
         if cluster_centers is None and len(cluster_centers) > 1:

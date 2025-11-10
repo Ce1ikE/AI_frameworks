@@ -4,7 +4,6 @@ import numpy as np
 from enum import Enum
 from pathlib import Path
 import onnxruntime as ort
-from ..utils.model_backend import BackendType
 from sklearn.metrics.pairwise import (
     cosine_similarity, 
     euclidean_distances, 
@@ -17,9 +16,7 @@ class ONNXClassifier(FaceClassifier):
         self, 
         model_path: Path
     ):
-        super().__init__(
-            backend=BackendType.SKLEARN, 
-        )
+        super().__init__()
 
     def predict(self, embedding: np.ndarray) -> int:
         pass

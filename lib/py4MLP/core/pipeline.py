@@ -62,9 +62,6 @@ class Pipeline:
         input("(Press enter to continue)")
 
     def build_pipeline(self):
-        """
-        Validate and build the pipeline structure
-        """
         if not self.transfomers:
             raise ValueError("""Pipeline must have at least one component to build""")
         if self.source is None:
@@ -142,7 +139,6 @@ class Pipeline:
             for f in as_completed(futures):
                 worker_storage, sample_id = f.result()
                 self.pipeline_storage.get_sample_storage(sample_id).worker_storage = worker_storage
-
         self.data_bus.publish(PipelineEventType.PIPELINE_BATCH_FINISHED)
 
 

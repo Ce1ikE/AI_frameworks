@@ -28,8 +28,9 @@ class Py4MLP:
     Core class to initialize the pipeline library components.
     """
     @classmethod
-    def __init__(cls, entrypoint: str, enable_logging: bool = True):
-        cls.entrypoint = entrypoint
+    def __init__(cls, enable_logging: bool = True):
+        import os
+        cls.entrypoint = os.getcwd()
         cls.paths = PathsConfig()
         cls.parse_arguments()
         cls.parse_config()
@@ -68,6 +69,8 @@ class Py4MLP:
 
     @classmethod
     def setup_paths(cls):
+        # preferably we want to setup the output directory outside the the cwd
+        # so we move one up and   
         cls.entrypoint_dir = Path(cls.entrypoint).resolve().parent
         cls.pipeline_library_dir = cls.entrypoint_dir / PIPELINE_DIR
         cls.pipeline_library_dir.mkdir(parents=True, exist_ok=True)
@@ -83,6 +86,7 @@ class Py4MLP:
         except KeyError as e:
             raise ValueError(f"Missing configuration key: {e}")
 
+    @classmethod
     def test_availability():
         import torch, onnxruntime, os, shutil, subprocess
 
@@ -97,7 +101,11 @@ class Py4MLP:
         # ONNX runtime allows us to use pytorch's (with cuda support) CUDA and cuDNN dll's 
         # because they are included with the package
         # https://onnxruntime.ai/docs/execution-providers/CUDA-ExecutionProvider.html#compatibility-with-pytorch
-        onnxruntime.preload_dlls()
+        
+        try:
+            onnxruntime.preload_dlls()
+        except Exception as e:
+            print(e)
 
         print("\nSystem PATH contains CUDA:", any("CUDA" in p for p in os.environ["PATH"].split(";")))
 

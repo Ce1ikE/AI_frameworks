@@ -5,7 +5,6 @@ from typing import Dict, Literal
 import onnxruntime as ort
 
 from .base import FaceDetector
-from ..utils.model_backend import BackendType
 from ..utils.model_store import verify_model_weights
 from ..dataclasses import ImageMessage
 from uniface.common import (
@@ -87,9 +86,7 @@ class RetinaFaceDetector(FaceDetector):
         score_metric: Literal["default", "max"] = "default",
         center_weight: float = 2.0
     ):
-        super().__init__(
-            backend=BackendType.ONNX
-        )
+        super().__init__()
         self.model_path = verify_model_weights(
             model_name=model_name,
             root=model_dir / "retinaface",
@@ -216,7 +213,6 @@ class RetinaFaceDetector(FaceDetector):
             "model": self.model_name.value,
             "device": self.device,
             "target_size": self.target_size,
-            "backend": self.backend.name,
             "confidence_threshold": self.confidence_threshold,
             "nms_threshold": self.nms_threshold,
             "onnx_runtime_version": getattr(ort, "__version__", "N/A"),
