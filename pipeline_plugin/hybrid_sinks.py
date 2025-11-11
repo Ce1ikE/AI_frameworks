@@ -213,26 +213,27 @@ class DimensionalityVisualizer(PipelineSink,WorkerSink):
         plt.axis("off")
         
         for (x, y), img_bytes, color in zip(projection_2d, faces,colors):
-            img = Utils.decode_img(img_bytes)
-            img = cv2.cvtColor(img, cv2.COLOR_BGR2RGB)
-            img = Image.fromarray(img)
-            img.thumbnail((40, 40), Image.Resampling.LANCZOS)
+            if img_bytes is not None:
+                img = Utils.decode_img(img_bytes)
+                img = cv2.cvtColor(img, cv2.COLOR_BGR2RGB)
+                img = Image.fromarray(img)
+                img.thumbnail((40, 40), Image.Resampling.LANCZOS)
 
-            if label_colors is not None:
-                img = img.convert("RGBA")
-                new_color = tuple([int(channel*255) for channel in color])
-                img = ImageOps.expand(
-                    img, 
-                    border=5, 
-                    fill=new_color
+                if label_colors is not None:
+                    img = img.convert("RGBA")
+                    new_color = tuple([int(channel*255) for channel in color])
+                    img = ImageOps.expand(
+                        img, 
+                        border=5, 
+                        fill=new_color
+                    )
+
+                ax.imshow(
+                    img,
+                    extent=(x - thumb_w/2, x + thumb_w/2, y - thumb_h/2, y + thumb_h/2),
+                    zorder=2,
+                    alpha=0.9
                 )
-
-            ax.imshow(
-                img,
-                extent=(x - thumb_w/2, x + thumb_w/2, y - thumb_h/2, y + thumb_h/2),
-                zorder=2,
-                alpha=0.9
-            )
 
         plt.tight_layout()
         plt.savefig(self.save_dir / f"{method.value.lower()}_2d_faces_{suffix}.svg", format="svg")

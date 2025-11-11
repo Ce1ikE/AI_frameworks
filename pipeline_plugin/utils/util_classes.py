@@ -57,6 +57,7 @@ class Utils:
             cv2.IMREAD_COLOR
         )
 
+
 class NpEncoder(json.JSONEncoder):
     def default(self, obj):
         if isinstance(obj, np.integer):

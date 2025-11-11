@@ -4,6 +4,7 @@ import pandas as pd
 import numpy as np
 import cv2
 from sklearn.base import BaseEstimator, ClusterMixin
+from typing import Callable
 
 from lib.py4MLP.core.component import *
 from lib.py4MLP.core.pipeline import *
@@ -109,8 +110,22 @@ class ImageFacesExtractor(Transformer):
         Transformer element that extracts faces from an image
         by cropping and optionally aligning them based on detections
     """
-    def __init__(self, name: str):
+    def __init__(self, name: str,min_face_ratio: int = 0.02):
         super().__init__(name)
+        self.min_face_ratio = min_face_ratio  
+
+    def filter_faces(self,faces: list[FaceDetectionMessage], img_width, img_height):
+        filtered = []
+        for f in faces:
+            x1, y1, x2, y2 = f.bbox.to_tuple()
+            w = x2 - x1
+            h = y2 - y1
+            # too small
+            if w/img_width < self.min_face_ratio or h/img_height < self.min_face_ratio:
+                continue
+            filtered.append(f)
+
+        return filtered
 
     def extract_face(self, image: np.ndarray, detection: FaceDetectionMessage) -> np.ndarray:
         if detection.landmarks is not None and len(detection.landmarks) == 5:
@@ -123,7 +138,12 @@ class ImageFacesExtractor(Transformer):
 
     def process(self, data: ImageDetectionMessage):
         faces = []
-        for det in data.detections:
+
+        for det in self.filter_faces(
+            data.detections,
+            data.original_image.image.shape[1],
+            data.original_image.image.shape[0]
+        ):
             try:
                 face_image = self.extract_face(
                     data.original_image.image, 
@@ -162,9 +182,6 @@ class ImageFacesEmbedder(Transformer):
         self.embedder = embedder
 
     def process(self, data: ImageFaceMessage):
-        if not data.faces:
-            return
-
         return ImageEmbeddingMessage(
             original_image=data.original_image,
             embeddings=[
@@ -281,15 +298,17 @@ class EmbeddingClassifier(Transformer):
         self.classifier = classifier
 
     def process(self, data: ImageEmbeddingMessage):
+        
         classifications: list[FaceClassifiedMessage] = []
-        for embedding_message in data.embeddings:
-            emb_normalized = embedding_message.embedding / np.linalg.norm(embedding_message.embedding)
-            classifications.append(
-                FaceClassifiedMessage(
-                    label=self.classifier.predict(emb_normalized),
-                    embedding=embedding_message
+        if data.embeddings is not None:
+            for embedding_message in data.embeddings:
+                emb_normalized = embedding_message.embedding / np.linalg.norm(embedding_message.embedding)
+                classifications.append(
+                    FaceClassifiedMessage(
+                        label=self.classifier.predict(emb_normalized),
+                        embedding=embedding_message
+                    )
                 )
-            )
 
         return ImageClassifiedMessage(
             original_image=data.original_image,

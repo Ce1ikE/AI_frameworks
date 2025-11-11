@@ -8,7 +8,6 @@ from typing import List
 from enum import Enum
 from collections import defaultdict
 from pathlib import Path
-from tqdm import tqdm
 
 
 

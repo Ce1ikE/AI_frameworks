@@ -52,7 +52,7 @@ class AnnotatedImageExporter(WorkerSink):
                 cv2.putText(
                     annotated_image,
                     label,
-                    (x1, max(0, y1 - 10)),
+                    (x1, max(10, y1 + 10)),
                     cv2.FONT_HERSHEY_SIMPLEX,
                     0.5,
                     (0, 255, 0),
@@ -70,6 +70,96 @@ class AnnotatedImageExporter(WorkerSink):
             annotated_image
         )
         self.worker_storage[WorkerKeys.ANNOTATED_RECORDS].append(path_to_file)
+
+# ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+class ClassifiedAnnotatedImageExporter(WorkerSink):
+    def __init__(self, name):
+        super().__init__(name)
+        self.input_type = ImageClassifiedMessage
+        self.name_colors = {}
+    
+    def _draw_label(self, img, text, x1, y1, x2, y2):
+        # scale font based on face size
+        face_width = x2 - x1
+        font_scale = max(0.7, face_width / 300)   # dynamic size
+        thickness = max(2, int(face_width / 150))
+        # compute text size
+        (text_w, text_h), baseline = cv2.getTextSize(
+            text,
+            cv2.FONT_HERSHEY_SIMPLEX,
+            font_scale,
+            thickness
+        )
+        # center above bbox
+        text_x = x1 + (face_width - text_w) // 2
+        text_y = y1 - 10
+        # prevent off top border
+        if text_y - text_h < 0:
+            text_y = text_h + 10
+        # draw background rectangle
+        cv2.rectangle(
+            img,
+            (text_x - 4, text_y - text_h - 4),
+            (text_x + text_w + 4, text_y + baseline + 4),
+            (0, 0, 0),
+            -1
+        )
+        # draw text
+        cv2.putText(
+            img,
+            text,
+            (text_x, text_y),
+            cv2.FONT_HERSHEY_SIMPLEX,
+            font_scale,
+            (0, 255, 0),
+            thickness,
+            cv2.LINE_AA
+        )
+
+    def process(self, data: ImageClassifiedMessage):
+        annotated_image = data.original_image.image.copy()
+
+        if len(data.classifications) > 0:
+            for classification in data.classifications:
+
+                det = classification.embedding.face.detection
+                name_label = classification.label
+                x1, y1, x2, y2 = map(int, det.bbox.to_tuple())
+
+                # calculate thickness proportional to bbox size
+                thickness = max(1, int(min(x2 - x1, y2 - y1) / 40))
+
+                # draw bounding box
+                cv2.rectangle(annotated_image, (x1, y1), (x2, y2), (0, 255, 0), thickness)
+
+                # draw big name label
+                if name_label:
+                    self._draw_label(annotated_image, name_label, x1, y1, x2, y2)
+
+                # confidence score
+                if hasattr(det, "score") and det.score is not None:
+                    score_text = f"{det.score:.2f}"
+                    cv2.putText(
+                        annotated_image,
+                        score_text,
+                        (x1, y2 + 20),
+                        cv2.FONT_HERSHEY_SIMPLEX,
+                        0.5,
+                        (0, 255, 0),
+                        thickness,
+                        cv2.LINE_AA,
+                    )
+
+                # landmarks
+                if det.landmarks is not None:
+                    for (lx, ly) in det.landmarks:
+                        cv2.circle(annotated_image, (int(lx), int(ly)), 3, (255, 0, 0), -1)
+
+            # save
+            path_to_file = self.sample_dir / f"{data.original_image.path.stem}_classified.jpg"
+            cv2.imwrite(str(path_to_file), annotated_image)
+
+            self.worker_storage[WorkerKeys.ANNOTATED_RECORDS].append(path_to_file)
 
 # ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 class WorkerExporter(WorkerSink):
@@ -96,11 +186,11 @@ class WorkerExporter(WorkerSink):
                     ExportKeys.IMAGE_NAME.value : image_name, 
                     # different per face image
                     ExportKeys.FACE_INDEX.value : idx, 
-                    ExportKeys.EMBEDDING.value : msg.embedding, 
+                    ExportKeys.EMBEDDING.value : msg.embedding.astype(np.float64).tolist(), 
                     ExportKeys.EMBEDDING_NORM.value : float(norm_emb), 
-                    ExportKeys.EMBEDDING_NORMALIZED.value : embedding_normalized, 
+                    ExportKeys.EMBEDDING_NORMALIZED.value : embedding_normalized.astype(np.float64).tolist(), 
                     ExportKeys.BBOX.value : list(msg.face.detection.bbox.to_tuple()), 
-                    ExportKeys.LANDMARKS.value : msg.face.detection.landmarks.tolist(), 
+                    ExportKeys.LANDMARKS.value : msg.face.detection.landmarks.astype(int).tolist(), 
                     ExportKeys.CONFIDENCE_SCORE.value : float(msg.face.detection.score), 
                     ExportKeys.FACE_IMAGE.value : Utils.encode_img(face_img), 
                 })    
@@ -108,6 +198,7 @@ class WorkerExporter(WorkerSink):
         if isinstance(data,ImageClassifiedMessage):
             for idx, msg in enumerate(data.classifications):
                 face_img = msg.embedding.face.face_image.image
+
                 norm_emb = np.linalg.norm(msg.embedding.embedding)
                 embedding_normalized = msg.embedding.embedding / norm_emb
 
@@ -116,15 +207,32 @@ class WorkerExporter(WorkerSink):
                     ExportKeys.IMAGE_NAME.value : image_name, 
                     # different per face image
                     ExportKeys.FACE_INDEX.value : idx, 
-                    ExportKeys.EMBEDDING.value : msg.embedding.embedding, 
+                    ExportKeys.EMBEDDING.value : msg.embedding.embedding.astype(float).tolist(), 
                     ExportKeys.EMBEDDING_NORM.value : float(norm_emb), 
-                    ExportKeys.EMBEDDING_NORMALIZED.value : embedding_normalized, 
+                    ExportKeys.EMBEDDING_NORMALIZED.value : embedding_normalized.astype(float).tolist(), 
                     ExportKeys.BBOX.value : list(msg.embedding.face.detection.bbox.to_tuple()), 
-                    ExportKeys.LANDMARKS.value : msg.embedding.face.detection.landmarks.tolist(), 
+                    ExportKeys.LANDMARKS.value : msg.embedding.face.detection.landmarks.astype(int).tolist(), 
                     ExportKeys.CONFIDENCE_SCORE.value : float(msg.embedding.face.detection.score), 
                     ExportKeys.FACE_IMAGE.value : Utils.encode_img(face_img), 
                     ExportKeys.LABEL.value : msg.label 
-                })   
+                })  
+
+            if len(data.classifications) == 0:
+                zero_vec = [0.0] * 512
+                rows.append({
+                    # same for each image
+                    ExportKeys.IMAGE_NAME.value : image_name, 
+                    # different per face image
+                    ExportKeys.FACE_INDEX.value : None, 
+                    ExportKeys.EMBEDDING.value : zero_vec, 
+                    ExportKeys.EMBEDDING_NORM.value : 0.0, 
+                    ExportKeys.EMBEDDING_NORMALIZED.value : zero_vec, 
+                    ExportKeys.BBOX.value : [0,0,0,0], 
+                    ExportKeys.LANDMARKS.value : [[0,0]] * 5, 
+                    ExportKeys.CONFIDENCE_SCORE.value : 0.0, 
+                    ExportKeys.FACE_IMAGE.value : None, 
+                    ExportKeys.LABEL.value : "none" 
+                })  
 
         if len(rows) != 0:
             path_to_file = self.sample_dir / f"{image_name}_results.parquet"
