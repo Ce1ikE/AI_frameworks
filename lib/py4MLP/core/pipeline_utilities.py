@@ -1,4 +1,3 @@
-import networkx as nx
 from typing import Type
 from pathlib import Path
 from dataclasses import dataclass

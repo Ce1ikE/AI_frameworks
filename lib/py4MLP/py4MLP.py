@@ -85,31 +85,3 @@ class Py4MLP:
                 p.mkdir(parents=True, exist_ok=True)
         except KeyError as e:
             raise ValueError(f"Missing configuration key: {e}")
-
-    @classmethod
-    def test_availability():
-        import torch, onnxruntime, os, shutil, subprocess
-
-        print("=== GPU Diagnostic ===")
-        print("Torch CUDA available:", torch.cuda.is_available())
-        if torch.cuda.is_available():
-            print("Torch device:", torch.cuda.get_device_name(0))
-        else:
-            print("Torch device: None")
-
-        print("\nONNX Runtime providers:", onnxruntime.get_available_providers())
-        # ONNX runtime allows us to use pytorch's (with cuda support) CUDA and cuDNN dll's 
-        # because they are included with the package
-        # https://onnxruntime.ai/docs/execution-providers/CUDA-ExecutionProvider.html#compatibility-with-pytorch
-        
-        try:
-            onnxruntime.preload_dlls()
-        except Exception as e:
-            print(e)
-
-        print("\nSystem PATH contains CUDA:", any("CUDA" in p for p in os.environ["PATH"].split(";")))
-
-        nvcc = shutil.which("nvcc")
-        print("nvcc found:", nvcc)
-        if nvcc:
-            subprocess.run(["nvcc", "--version"])  
