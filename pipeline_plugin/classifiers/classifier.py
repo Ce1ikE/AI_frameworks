@@ -71,10 +71,7 @@ class MetricClassifier(FaceClassifier):
             cluster_distances = []
             for label, center in self.cluster_centers.items():
                 if self.metric == Metric.EUCLIDEAN:
-                    # if we flip the sign then -1 * [0, inf] becomes [-inf, 0] which results in the higher the value the more similar
-                    # and thus we can use argmax to find the closest center for all metrics
-                    dist = float(np.linalg.norm(embedding - center))
-                    score = -dist
+                    score = -float(np.linalg.norm(embedding - center))
                 
                 elif self.metric == Metric.COSINE:
                     score = np.dot(embedding, center)
@@ -90,16 +87,16 @@ class MetricClassifier(FaceClassifier):
             # so once we have all distances we can find the closest center
             # but we also need to check if the distance is below a certain threshold
             # because if the distance is too high, we are likely dealing with an unknown face
+            print(f"best score: {best_score}")
             if self.threshold is not None:
                 if self.metric == Metric.EUCLIDEAN:
                     # For Euclidean threshold is applied to raw distance
-                    actual_dist = -best_score
-                    if actual_dist > self.threshold:
-                        return "Unknown"
+                    if -best_score > self.threshold:
+                        return "none"
                 else:
                     # Cosine/Dot -> higher is better
                     if best_score < self.threshold:
-                        return "Unknown"
+                        return "none"
             return best_label
     
     def settings(self):

@@ -80,7 +80,9 @@ class EmbeddingEvaluator(PipelineSink):
         self, 
         name: str, 
         max_k: int = 30,
-        neighbors: int = 25
+        neighbors: int = 25,
+        norm_distribution_bins = 50,
+        confidence_score_bins = 50
     ):
         super().__init__(name)
         self.input_type = [
@@ -88,6 +90,8 @@ class EmbeddingEvaluator(PipelineSink):
         ]
         self.max_k = max_k
         self.neighbors = neighbors
+        self.norm_distribution_bins = norm_distribution_bins
+        self.confidence_score_bins = confidence_score_bins
         self.fontdict = {
             "fontsize": 10,
             "fontweight": "bold",
@@ -109,7 +113,7 @@ class EmbeddingEvaluator(PipelineSink):
         scores = df[ExportKeys.CONFIDENCE_SCORE.value].values
         embedding_norms = df[ExportKeys.EMBEDDING_NORM.value].values
 
-        # K-distance (for DBSCAN eps estimation)
+        # K-distance 
         neigh = NearestNeighbors(n_neighbors=self.neighbors)
         model = neigh.fit(embeddings)
         distances, indices = model.kneighbors(embeddings)
@@ -167,7 +171,7 @@ class EmbeddingEvaluator(PipelineSink):
 
         # ---------- norm distribution plot ---------- #
         fig = plt.figure(figsize=(10, 6))
-        plt.hist(embedding_norms, bins=100)
+        plt.hist(embedding_norms, bins=self.norm_distribution_bins)
         plt.title("Embedding Norm Distribution", fontdict=self.fontdict)
         plt.xlabel("Frequency", fontdict=self.fontdict)
         plt.ylabel("L2 Norm", fontdict=self.fontdict)
@@ -178,7 +182,7 @@ class EmbeddingEvaluator(PipelineSink):
 
         # ---------- confidence score distribution plot ---------- #
         fig = plt.figure(figsize=(10, 6))
-        plt.hist(scores, bins=50)
+        plt.hist(scores, bins=self.confidence_score_bins)
         plt.title("Confidence Score Distribution", fontdict=self.fontdict)
         plt.xlabel("Sample Index", fontdict=self.fontdict)
         plt.ylabel("Confidence Score", fontdict=self.fontdict)
@@ -236,6 +240,11 @@ class InferenceEvaluator(PipelineSink):
         self.input_type = [
             PipelineEventType.PIPELINE_FINISHED
         ]
+        self.fontdict = {
+            "fontsize": 10,
+            "fontweight": "bold",
+            "fontfamily": "monospace",
+        }
 
     def process(self, event):
         self.pipeline_storage.pipeline_ctx[PipelineKeys.AGGREGATED_RECORDS]
@@ -248,27 +257,41 @@ class InferenceEvaluator(PipelineSink):
 
         self._create_cluster_picture(df,labels)
         self._create_csv_sample(df)
+        self._create_k_distance_graph(df)
 
     def _create_csv_sample(self,df: pd.DataFrame):
-
+        # TODO: if None in picture == "none"
         df[ExportKeys.LABEL.value] = df[ExportKeys.LABEL.value].astype(str).str.lower()
 
         # remove leading zeros from image_name
         df[ExportKeys.IMAGE_NAME.value] = (
-            df[ExportKeys.IMAGE_NAME.value].astype(str).str.lstrip("0").replace("", "0").astype(int)
+            df[ExportKeys.IMAGE_NAME.value]
+            .astype(str)
+            .str.lstrip("0")
+            .replace("", "0")
+            .astype(int)
         )
 
         # extract bbox_x (left coordinate)
         # bbox format expected: [x, y, w, h] or [x1, y1, x2, y2] - adjust if needed!
         df["bbox_x"] = df[ExportKeys.BBOX.value].apply(lambda b: b[0])
-
-        # Sort by image_name and then by bbox_x (left to right)
+        # sorts by image_name and then by bbox_x (left to right)
         df_sorted = df.sort_values(by=[ExportKeys.IMAGE_NAME.value, "bbox_x"])
+
+        def clean_labels(labels):
+            labels_list = list(labels)
+
+            real_labels = [lbl for lbl in labels_list if lbl != "none"]
+            # case 1: at least one real label -> drop 'none'
+            if len(real_labels) > 0:
+                return ";".join(real_labels)
+            # case 2: no real labels -> return "none"
+            return "none"
 
         # Group again but now respecting the sorted order
         grouped = (
             df_sorted.groupby(ExportKeys.IMAGE_NAME.value)[ExportKeys.LABEL.value]
-            .apply(lambda labels: ";".join(labels))  # joins in ordered sequence
+            .apply(clean_labels)
             .reset_index()
         )
 
@@ -305,15 +328,38 @@ class InferenceEvaluator(PipelineSink):
                 ax.axis("off")
 
             for idx, encoded_img in enumerate(cluster_df[ExportKeys.FACE_IMAGE.value]):
-
-                img = Utils.decode_img(encoded_img)
-                img = cv2.cvtColor(img, cv2.COLOR_BGR2RGB)
-                ax = axes.flatten()[idx]
-                ax.imshow(img)
-                ax.axis("off")
+                if encoded_img is not None:
+                    img = Utils.decode_img(encoded_img)
+                    img = cv2.cvtColor(img, cv2.COLOR_BGR2RGB)
+                    ax = axes.flatten()[idx]
+                    ax.imshow(img)
+                    ax.axis("off")
 
             # Save PDF
             pdf_path = self.save_dir / f"cluster_{cluster_id}.pdf"
             fig.savefig(pdf_path, format="pdf", bbox_inches='tight')
             plt.close(fig)
             print(f"Saved: {pdf_path}")
+
+
+    def _create_k_distance_graph(self,df: pd.DataFrame):
+        from sklearn.neighbors import NearestNeighbors
+        neigh = NearestNeighbors(n_neighbors=30)
+
+        embedding_norm =  np.vstack(df[ExportKeys.EMBEDDING_NORMALIZED.value].values)
+        model = neigh.fit(embedding_norm)
+        distances, indices = model.kneighbors(embedding_norm)
+        k_distances = np.sort(distances, axis=0)
+        fig = plt.figure(figsize=(10, 6))
+        plt.plot(k_distances)
+        plt.legend(
+            [f"{n_neighbors}th Nearest Neighbor Distance" for n_neighbors in range(1, 30 + 1)],
+            bbox_to_anchor=(1.0, 0.5), loc='best'
+        )
+        plt.title("K-Distance Plot", fontdict=self.fontdict)
+        plt.xlabel("Data Points sorted by Distance", fontdict=self.fontdict)
+        plt.ylabel(f"Distance to Kth Nearest Neighbor", fontdict=self.fontdict)
+        plt.grid(True, linestyle='--', alpha=0.7)
+        plt.tight_layout(pad=2.0)
+        plt.savefig(self.save_dir / f'k_distance_graph_normalized.svg', format='svg')
+        plt.close(fig)
