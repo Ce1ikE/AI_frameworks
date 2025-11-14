@@ -136,14 +136,17 @@ def inference_pipeline(input_files_test,cluster_centers: dict,output_path):
             ],
             pipeline_sinks=[
                 WorkerAggregator("aggregator"),
-                InferenceEvaluator("inference eval"),
+                InferenceEvaluator(
+                    "inference eval",
+                    cluster_centers=cluster_centers
+                ),
                 DimensionalityVisualizer("dimensionality reducer visualizer"),
                 EmbeddingEvaluator(
                     "embedding evaluator",
                     neighbors=15,
                     max_k=20,
                     confidence_score_bins=50,
-                    norm_distribution_bins=30
+                    norm_distribution_bins=30,
                 ),
             ],
         )

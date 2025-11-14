@@ -114,19 +114,6 @@ class ImageFacesExtractor(Transformer):
         super().__init__(name)
         self.min_face_ratio = min_face_ratio  
 
-    def filter_faces(self,faces: list[FaceDetectionMessage], img_width, img_height):
-        filtered = []
-        for f in faces:
-            x1, y1, x2, y2 = f.bbox.to_tuple()
-            w = x2 - x1
-            h = y2 - y1
-            # too small
-            if w/img_width < self.min_face_ratio or h/img_height < self.min_face_ratio:
-                continue
-            filtered.append(f)
-
-        return filtered
-
     def extract_face(self, image: np.ndarray, detection: FaceDetectionMessage) -> np.ndarray:
         if detection.landmarks is not None and len(detection.landmarks) == 5:
             from uniface import face_alignment
@@ -139,11 +126,7 @@ class ImageFacesExtractor(Transformer):
     def process(self, data: ImageDetectionMessage):
         faces = []
 
-        for det in self.filter_faces(
-            data.detections,
-            data.original_image.image.shape[1],
-            data.original_image.image.shape[0]
-        ):
+        for det in data.detections:
             try:
                 face_image = self.extract_face(
                     data.original_image.image, 

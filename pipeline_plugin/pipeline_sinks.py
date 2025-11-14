@@ -82,7 +82,7 @@ class EmbeddingEvaluator(PipelineSink):
         max_k: int = 30,
         neighbors: int = 25,
         norm_distribution_bins = 50,
-        confidence_score_bins = 50
+        confidence_score_bins = 50,
     ):
         super().__init__(name)
         self.input_type = [
@@ -235,11 +235,12 @@ class TrainingResultsAggregator(PipelineSink):
 
 # ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 class InferenceEvaluator(PipelineSink):
-    def __init__(self, name):
+    def __init__(self, name, cluster_centers: dict = None):
         super().__init__(name)
         self.input_type = [
             PipelineEventType.PIPELINE_FINISHED
         ]
+        self.cluster_centers = cluster_centers
         self.fontdict = {
             "fontsize": 10,
             "fontweight": "bold",
@@ -254,13 +255,13 @@ class InferenceEvaluator(PipelineSink):
             self.pipeline_storage.pipeline_ctx.get(PipelineKeys.AGGREGATED_RECORDS, [])[0]
         )
         labels = df[ExportKeys.LABEL.value].values
+        embeddings = np.vstack(df[ExportKeys.EMBEDDING_NORMALIZED.value].values)
 
-        self._create_cluster_picture(df,labels)
+        self._create_cluster_picture(df,labels,embeddings)
         self._create_csv_sample(df)
         self._create_k_distance_graph(df)
 
     def _create_csv_sample(self,df: pd.DataFrame):
-        # TODO: if None in picture == "none"
         df[ExportKeys.LABEL.value] = df[ExportKeys.LABEL.value].astype(str).str.lower()
 
         # remove leading zeros from image_name
@@ -305,42 +306,100 @@ class InferenceEvaluator(PipelineSink):
         grouped.to_csv(self.save_dir / "sample_submission.csv", index=False)
 
 
-    def _create_cluster_picture(self,df: pd.DataFrame,labels):
+    def _create_cluster_picture(self,df: pd.DataFrame,labels,embeddings: np.ndarray):
+        from sklearn.metrics.pairwise import cosine_similarity
+        from matplotlib import gridspec
         cluster_ids = np.unique(labels)
-        
-        # normal image is 112x112
+
         for cluster_id in cluster_ids:
             cluster_df = df[labels == cluster_id]
             if len(cluster_df) == 0:
                 continue
-            
-            # determine grid size
+
+            # embeddings are already normalized
+            embeddings = np.vstack(cluster_df[ExportKeys.EMBEDDING_NORMALIZED.value])
+            # cosine similarity matrix
+            sim_matrix = cosine_similarity(embeddings)
+
+            if cluster_id == "none":
+                center = np.mean(embeddings, axis=0)
+                self.cluster_centers[cluster_id] = center
+                
+            center = self.cluster_centers[cluster_id]
+            euclid_dists = np.linalg.norm(embeddings - center, axis=1)
+            # sort by distance to center
+            sort_idx = np.argsort(euclid_dists)
+            cluster_df = cluster_df.iloc[sort_idx]
+            embeddings = embeddings[sort_idx]
+            sim_matrix = sim_matrix[sort_idx][:, sort_idx]
+            euclid_dists = euclid_dists[sort_idx]
+
             n_images = len(cluster_df)
             cols = 8
             rows = int(np.ceil(n_images / cols))
 
-            fig, axes = plt.subplots(rows, cols, figsize=(cols * 2, rows * 2))
-            axes = np.array(axes).reshape(rows, cols)
+            fig = plt.figure(figsize=(cols * 2.5 + 6, rows * 2.5 + 3))
+            gs = gridspec.GridSpec(rows + 3, cols + 6) 
 
-            fig.suptitle(f"Cluster {cluster_id}", fontsize=16)
+            title_ax = fig.add_subplot(gs[0, :])
+            title_ax.set_axis_off()
+            title_ax.set_title(f"Cluster {cluster_id}", fontsize=20, pad=15)
 
-            for ax in axes.flatten():
+            # ------------ faces grid ------------ #
+            # faces grid
+            img_axes = []
+            for r in range(rows):
+                for c in range(cols):
+                    ax = fig.add_subplot(gs[r + 1, c])
+                    ax.axis("off")
+                    img_axes.append(ax)
+
+            # inserting faces with distance label
+            for idx, (encoded_img, conf, dist) in enumerate(
+                    zip(cluster_df[ExportKeys.FACE_IMAGE.value],
+                        cluster_df[ExportKeys.CONFIDENCE_SCORE.value],
+                        euclid_dists)):
+                
+                img = Utils.decode_img(encoded_img)
+                img = cv2.cvtColor(img, cv2.COLOR_BGR2RGB)
+
+                ax = img_axes[idx]
+                ax.imshow(img)
+                ax.set_title(f"dist {dist:.3f}", fontsize=7, color="red", pad=1)
                 ax.axis("off")
 
-            for idx, encoded_img in enumerate(cluster_df[ExportKeys.FACE_IMAGE.value]):
-                if encoded_img is not None:
-                    img = Utils.decode_img(encoded_img)
-                    img = cv2.cvtColor(img, cv2.COLOR_BGR2RGB)
-                    ax = axes.flatten()[idx]
-                    ax.imshow(img)
-                    ax.axis("off")
+            # ------------ Similarity heatmap ------------ #
+            heat_ax = fig.add_subplot(gs[1:, cols:])
+            im = heat_ax.imshow(sim_matrix, cmap="viridis", vmin=-1, vmax=1)
+            heat_ax.set_title("Cosine Similarity Matrix", fontsize=12)
 
-            # Save PDF
+            heat_ax.set_xticks(range(n_images))
+            heat_ax.set_yticks(range(n_images))
+            heat_ax.set_xticklabels(range(n_images), fontsize=6, rotation=90)
+            heat_ax.set_yticklabels(range(n_images), fontsize=6)
+
+            cbar = fig.colorbar(im, ax=heat_ax, fraction=0.046, pad=0.04)
+            cbar.set_label("similarity", fontsize=9)
+
+            # ------------ Thumbnails below heatmap ------------ #
+            thumb_h = 0.12  # fixed thumbnail height
+            for i in range(n_images):
+                ax_thumb = fig.add_axes([
+                    heat_ax.get_position().x0 + (i / n_images) * heat_ax.get_position().width,
+                    heat_ax.get_position().y1 + 0.005,
+                    heat_ax.get_position().width / n_images,
+                    thumb_h,
+                ])
+                img = Utils.decode_img(cluster_df.iloc[i][ExportKeys.FACE_IMAGE.value])
+                img = cv2.cvtColor(img, cv2.COLOR_BGR2RGB)
+                ax_thumb.imshow(img)
+                ax_thumb.axis("off")
+
             pdf_path = self.save_dir / f"cluster_{cluster_id}.pdf"
-            fig.savefig(pdf_path, format="pdf", bbox_inches='tight')
+            fig.savefig(pdf_path, format="pdf", bbox_inches="tight")
             plt.close(fig)
-            print(f"Saved: {pdf_path}")
 
+            print(f"[OK] Saved: {pdf_path}")
 
     def _create_k_distance_graph(self,df: pd.DataFrame):
         from sklearn.neighbors import NearestNeighbors
