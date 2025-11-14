@@ -72,31 +72,116 @@ class NpEncoder(json.JSONEncoder):
 class SlideShow:
     @staticmethod
     def navigate_images(image_paths: list[Path]):
+        # https://stackoverflow.com/questions/28595958/creating-trackbars-to-scroll-large-image-in-opencv-python/33293804#33293804
+        state = {
+            'zoom_factor': 1.0,
+            'pan_x': 0, # Panning offset
+            'pan_y': 0
+        }
+
+        def mouse_callback(event, x, y, flags, param):
+            """
+            Handles mouse wheel events for zooming.
+            """
+            
+            # Zoom In: Mouse Wheel Up (Flags 8 or 16 depending on OS/backend)
+            if event == cv2.EVENT_MOUSEWHEEL:
+                if flags > 0: # Check for positive flags (usually wheel up)
+                    # Zoom In: Increase factor by a small step
+                    state['zoom_factor'] *= 1.1
+                    if state['zoom_factor'] > 10.0: state['zoom_factor'] = 10.0 # Cap max zoom
+                else:
+                    # Zoom Out: Decrease factor by a small step
+                    state['zoom_factor'] /= 1.1
+                    if state['zoom_factor'] < 1.0: state['zoom_factor'] = 1.0 # Cap min zoom
+                    
+                # Reset pan if zooming out to the fit-to-screen size (zoom_factor 1.0)
+                if state['zoom_factor'] == 1.0:
+                    state['pan_x'] = 0
+                    state['pan_y'] = 0
+
+            if event == cv2.EVENT_LBUTTONDBLCLK:
+                pass
+            
         if len(image_paths) == 0:
             return
-
+        
         import cv2
+        
         i = 0
-        cv2.namedWindow("Display", cv2.WINDOW_NORMAL)
-        cv2.setWindowProperty("Display", cv2.WND_PROP_FULLSCREEN, cv2.WINDOW_NORMAL)
+        window_name = "Display"
+
+        cv2.namedWindow(window_name, cv2.WINDOW_NORMAL)
+        cv2.setWindowProperty(window_name, cv2.WND_PROP_FULLSCREEN, cv2.WINDOW_FULLSCREEN)
+        cv2.setMouseCallback(window_name, mouse_callback)
+        rect = cv2.getWindowImageRect(window_name)
+        window_width = rect[2]
+        window_height = rect[3]
+
+        print(f"Fullscreen Window Dimensions: Width={window_width}, Height={window_height}")
+
         while True:
-            img = cv2.imread(image_paths[i])
-            # Show the image
-            cv2.setWindowTitle("Display",image_paths[i].stem)
-            cv2.imshow("Display", img)
-            # Wait for action
-            key = cv2.waitKey(0) & 0xFF
+            img = cv2.imread(str(image_paths[i])) 
+            if img is None:
+                print(f"Error loading image: {image_paths[i].stem}")
+                i = (i + 1) % len(image_paths)
+                continue
+
+            original_height, original_width = img.shape[:2]
+            width_scale = window_width / original_width
+            height_scale = window_height / original_height
+            scale_factor = min(width_scale, height_scale)
+            total_scale_factor = scale_factor * state['zoom_factor']
+            # new dimensions
+            new_width = int(original_width * total_scale_factor)
+            new_height = int(original_height * total_scale_factor)
+
+            resized_img = cv2.resize(img, (new_width, new_height),interpolation=cv2.INTER_AREA)
+            
+            canvas = np.zeros((window_height, window_width, 3), dtype=np.uint8)
+            
+            if state['zoom_factor'] == 1.0:
+                x_offset = (window_width - new_width) // 2
+                y_offset = (window_height - new_height) // 2
+            # If zoomed in, place the image at the top-left (pan_x/y offset could be added for panning)
+            else:
+                 # With simple zoom, we just keep the image in the top-left corner of the view
+                 x_offset = (window_width - new_width) // 2
+                 y_offset = (window_height - new_height) // 2
+                
+            # Use pan offsets (currently unused but provided for future panning implementation)
+            x_offset += state['pan_x']
+            y_offset += state['pan_y']
+
+            c_x1 = max(0, x_offset)
+            c_y1 = max(0, y_offset)
+            c_x2 = min(window_width, x_offset + new_width)
+            c_y2 = min(window_height, y_offset + new_height)
+
+            # Define image region (clamped to image boundaries)
+            # This handles cases where the image is partially off-screen
+            i_x1 = max(0, -x_offset)
+            i_y1 = max(0, -y_offset)
+            i_x2 = min(new_width, window_width - x_offset)
+            i_y2 = min(new_height, window_height - y_offset)
+            
+            canvas[c_y1:c_y2, c_x1:c_x2] = resized_img[i_y1:i_y2, i_x1:i_x2]
+            
+            cv2.setWindowTitle(window_name,image_paths[i].stem + f" (Zoom: {state['zoom_factor']:.2f}x)")
+            cv2.imshow(window_name, canvas)
+
+            key = cv2.waitKey(10) & 0xFF
             if key == ord('q'):
                 break
-            if key == ord('n'):
-                i += 1
-            if key == ord('p'):
-                i -= 1
-
-            if i < 0:
-                i = len(image_paths) - 1
-            if len(image_paths) == i:
-                i = 0
+            if key == ord('n') or key == ord('p'):
+                if key == ord('n'):
+                    i = (i + 1) % len(image_paths)
+                else:
+                    i = (i - 1) % len(image_paths)
+                
+                state['zoom_factor'] = 1.0
+                state['pan_x'] = 0
+                state['pan_y'] = 0
 
         cv2.destroyAllWindows()
 

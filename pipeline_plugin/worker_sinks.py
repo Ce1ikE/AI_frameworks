@@ -77,7 +77,7 @@ class ClassifiedAnnotatedImageExporter(WorkerSink):
         super().__init__(name)
         self.input_type = ImageClassifiedMessage
         self.name_colors = {}
-    
+
     def _draw_label(self, img, text, x1, y1, x2, y2):
         # scale font based on face size
         face_width = x2 - x1
@@ -116,6 +116,44 @@ class ClassifiedAnnotatedImageExporter(WorkerSink):
             cv2.LINE_AA
         )
 
+    def _draw_confidence(self, img, text, x1, y1, x2, y2):
+        # scale font based on face size
+        face_width = x2 - x1
+        font_scale = max(0.7, face_width / 300)   # dynamic size
+        thickness = max(2, int(face_width / 150))
+        # compute text size
+        (text_w, text_h), baseline = cv2.getTextSize(
+            text,
+            cv2.FONT_HERSHEY_SIMPLEX,
+            font_scale,
+            thickness
+        )
+        # center below bbox
+        text_x = x1 + (face_width - text_w) // 2
+        text_y = y2 + 20
+        # prevent off bottom border
+        if text_y + text_h > img.shape[0]:
+            text_y = img.shape[0] - baseline - 10
+        # draw background rectangle
+        cv2.rectangle(
+            img,
+            (text_x - 4, text_y - text_h - 4),
+            (text_x + text_w + 4, text_y + baseline + 4),
+            (0, 0, 0),
+            -1
+        )
+        # draw confidence below bbox
+        cv2.putText(
+            img,
+            text,
+            (text_x, text_y),
+            cv2.FONT_HERSHEY_SIMPLEX,
+            font_scale,
+            (0, 255, 0),
+            thickness,
+            cv2.LINE_AA,
+        )
+
     def process(self, data: ImageClassifiedMessage):
         annotated_image = data.original_image.image.copy()
 
@@ -128,27 +166,15 @@ class ClassifiedAnnotatedImageExporter(WorkerSink):
 
                 # calculate thickness proportional to bbox size
                 thickness = max(1, int(min(x2 - x1, y2 - y1) / 40))
-
                 # draw bounding box
                 cv2.rectangle(annotated_image, (x1, y1), (x2, y2), (0, 255, 0), thickness)
-
                 # draw big name label
                 if name_label:
                     self._draw_label(annotated_image, name_label, x1, y1, x2, y2)
-
-                # confidence score
-                if hasattr(det, "score") and det.score is not None:
-                    score_text = f"{det.score:.2f}"
-                    cv2.putText(
-                        annotated_image,
-                        score_text,
-                        (x1, y2 + 20),
-                        cv2.FONT_HERSHEY_SIMPLEX,
-                        0.5,
-                        (0, 255, 0),
-                        thickness,
-                        cv2.LINE_AA,
-                    )
+                if det.score is not None:
+                    # draw confidence score
+                    score_label = f"{det.score:.2f}"
+                    self._draw_confidence(annotated_image, score_label, x1, y1, x2, y2)
 
                 # landmarks
                 if det.landmarks is not None:
@@ -241,10 +267,6 @@ class WorkerExporter(WorkerSink):
 
 # ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 class TrainingResultsExporter(WorkerSink):
-    """
-    We want to export the original dataframe but with labels
-    save a model's centroids if possible and the model itself if supported
-    """
     def __init__(self, name):
         super().__init__(name)
         self.input_type = [

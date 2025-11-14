@@ -48,9 +48,11 @@ def run_inference():
 def run_streaming_inference():
     streaming_pipeline(cluster_centers_and_labels)
 
+def run_slideshow():
+    SlideShow.navigate_images([path for path in Path("D:\\AI_frameworks\\py4MLP_pipelines\\results\\inference_pipeline_20251111_220140").rglob("*.jpg") ])
+
 def main():
-    run_inference()
-    # SlideShow.navigate_images([path for path in Path("D:\\AI_frameworks\\py4MLP_pipelines\\results\\inference_pipeline_20251111_034955").rglob("*.jpg") ])
+    run_slideshow()
 
 if __name__ == "__main__":
     main()
