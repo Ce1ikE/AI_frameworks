@@ -20,7 +20,7 @@ label_to_name = {
     10 : "alper",
     8  : "akif",
     0  : "arno",
-    12 : "diane",
+    12 : "daiane",
     2  : "eh",
     4  : "lorenzo",
     6  : "rayen",
