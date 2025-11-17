@@ -125,7 +125,7 @@ def inference_pipeline(input_files_test,cluster_centers: dict,output_path):
                     MetricClassifier(
                         cluster_centers=cluster_centers,
                         metric=Metric.EUCLIDEAN,
-                        threshold=1.0
+                        threshold=1.15
                     )
                 )
             ],

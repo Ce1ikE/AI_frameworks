@@ -34,6 +34,32 @@ def fetch_cluster_center():
         for idx, name in label_to_name.items()
     }
 
+def compare_results():
+    results_with_none = Path("..\\py4MLP_pipelines\\results\\inference_pipeline_20251111_220140\\sample_submission.csv")
+    results_without_none = Path("..\\py4MLP_pipelines\\results\\inference_pipeline_20251111_211144\\sample_submission.csv")
+    results_robin = Path("..\\py4MLP_pipelines\\results\\facedetectionRobin.csv")
+
+
+    results_with_none_df = pd.read_csv(results_with_none)
+    results_without_none_df = pd.read_csv(results_without_none)
+    results_robin_df = pd.read_csv(results_robin)
+
+    for label_EC_with_none , label_EC_without_none , label_Robin , image_name in zip(
+        results_with_none_df["label_name"].values,
+        results_without_none_df["label_name"].values,
+        results_robin_df["label_name"].values,
+        results_robin_df["image"].values,
+    ):
+        if label_EC_with_none != label_Robin or label_EC_without_none != label_Robin:
+            print(f"labels for image {image_name}:")
+            print(f"""
+             {label_EC_with_none}
+             {label_Robin}
+             {label_EC_without_none}
+            """)
+        
+
+
 def run_feature_extraction():
     feature_extraction_pipeline(input_files_train,core.paths.output)
 
@@ -53,7 +79,7 @@ def run_slideshow():
     SlideShow.navigate_images([path for path in Path("D:\\AI_frameworks\\py4MLP_pipelines\\results\\inference_pipeline_20251111_220140").rglob("*.jpg") ])
 
 def main():
-    run_slideshow()
+    run_inference()
 
 if __name__ == "__main__":
     main()
