@@ -4,14 +4,22 @@ from lib.py4MLP.py4MLP import Py4MLP
 
 from . import *
 from pipeline_plugin.detectors.retinaface import *
+from pipeline_plugin.detectors.violajones import *
+from pipeline_plugin.detectors.yunet import *
 from pipeline_plugin.embedders.arcface import *
+from pipeline_plugin.depth_estimators.midas import *
 
 RANDOM_STATE=42
 
 
-def feature_extraction_pipeline(input_files_train,output_path):
+def feature_extraction_pipeline(
+        input_files_train,
+        output_path,
+        pipeline_name="feature extraction pipeline",
+    ):
+
     Pipeline(
-        name=f"feature extraction pipeline",
+        name=pipeline_name,
         output_root=output_path,
         source=ImageFileLoader(
             "image loader",
@@ -31,6 +39,15 @@ def feature_extraction_pipeline(input_files_train,output_path):
                 ImageFacesExtractor(
                     "Face extractor"
                 ),
+                ImageDepthEstimator(
+                    "Depth estimator",
+                    MiDaSEstimator(
+                        model_dir=Py4MLP.paths.models,
+                        model_name=MiDaSWeights.DPT_SWIN2_TINY_256,
+                        device="cuda",
+                        depth_threshold=0.4
+                    )
+                ),
                 ImageFacesEmbedder(
                     "Face embedder",
                     ArcFaceEmbedder(
@@ -47,12 +64,18 @@ def feature_extraction_pipeline(input_files_train,output_path):
             pipeline_sinks=[
                 WorkerAggregator("worker results aggregator"),
                 EmbeddingEvaluator("embedding evaluator",neighbors=15,max_k=20),
-                DimensionalityVisualizer("dimensionality reducer visualizer")
+                DimensionalityVisualizer("dimensionality reducer visualizer UMAP", method=DimensionalityVisualizer.ReductionTechnique.UMAP),
+                DimensionalityVisualizer("dimensionality reducer visualizer T-SNE", method=DimensionalityVisualizer.ReductionTechnique.TSNE),
             ],
         )
-    ).build_pipeline().run_pipeline(PipelineType.BATCH,max_workers=1)
+    ).build_pipeline().run_pipeline(PipelineType.BATCH,max_workers=2)
 
-def training_pipeline(input_embeddings_files,n_clusters,output_path):
+def training_pipeline(
+        input_embeddings_files: list[Path],
+        n_clusters,
+        output_path,
+        pipeline_name="training pipeline",
+    ):
     from sklearn.cluster import (
         KMeans,
         DBSCAN,
@@ -65,7 +88,7 @@ def training_pipeline(input_embeddings_files,n_clusters,output_path):
     from sklearn.cluster._hdbscan.hdbscan import HDBSCAN        
 
     Pipeline(
-        name="training pipeline",
+        name=pipeline_name,
         output_root=output_path,
         source=EmbeddingFileLoader("embedding loader", input_embeddings_files),
         pipeline_spec=PipelineSpec(
@@ -81,7 +104,8 @@ def training_pipeline(input_embeddings_files,n_clusters,output_path):
             worker_sinks=[
                 TrainingResultsExporter("results exporter"),
                 TrainingEvaluator("Training evaluator"),
-                DimensionalityVisualizer("dimensionality reducer visualizer"),
+                DimensionalityVisualizer("dimensionality reducer visualizer UMAP", method=DimensionalityVisualizer.ReductionTechnique.UMAP),
+                DimensionalityVisualizer("dimensionality reducer visualizer T-SNE", method=DimensionalityVisualizer.ReductionTechnique.TSNE),
             ],
             pipeline_sinks=[
                 TrainingResultsAggregator("Training aggregator"),
@@ -89,12 +113,17 @@ def training_pipeline(input_embeddings_files,n_clusters,output_path):
         )
     ).build_pipeline().run_pipeline(PipelineType.BATCH,max_workers=None)
 
-def inference_pipeline(input_files_test,cluster_centers: dict,output_path):
+def inference_pipeline(
+        input_files_test,
+        cluster_centers: dict,
+        output_path,
+        pipeline_name="inference pipeline",
+    ):
     worker_ex = WorkerExporter("worker results exporter")
     worker_ex.input_type = [ImageClassifiedMessage]
 
     Pipeline(
-        name=f"inference pipeline",
+        name=pipeline_name,
         output_root=output_path,
         source=ImageFileLoader("image loader",input_files_test),
         pipeline_spec=PipelineSpec(
@@ -125,7 +154,7 @@ def inference_pipeline(input_files_test,cluster_centers: dict,output_path):
                     MetricClassifier(
                         cluster_centers=cluster_centers,
                         metric=Metric.EUCLIDEAN,
-                        threshold=1.15
+                        threshold=1.145
                     )
                 )
             ],

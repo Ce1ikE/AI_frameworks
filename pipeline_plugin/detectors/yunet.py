@@ -140,7 +140,7 @@ class YuNetDetector(FaceDetector):
             "model": self.model_name.value,
             "opencv_version": cv2.__version__,
             "input_size": self.input_size,
-            "nms_threshold": str(self.detector.getNMSThreshold()),
-            "score_threshold": str(self.detector.getScoreThreshold()),
-            "top_k": str(self.detector.getTopK()),
+            "nms_threshold": str(self.nms_threshold),
+            "score_threshold": str(self.confidence_threshold),
+            "top_k": str(self.top_k),
         }

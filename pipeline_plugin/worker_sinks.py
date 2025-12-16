@@ -12,26 +12,6 @@ plt.ioff()
 plt.style.use("dark_background")
 
 
-# TODO	                                
-# ----
-# [x] Save input images	                    
-# [x] Save cropped faces	                
-# [x] Save annotated image	                
-# [x] Save embedding vectors	            
-# [X] Save model settings	                	            
-# [X] Save trained model (ONNX)	            	            
-# [x] Compile results         	            
-# [x] Save clustered embeddings	            
-# [X] Save classification labels (inference pipeline required)	        
-# [X] Save evaluation report (how good is the data ?)	                	            
-# [X] Save training report (what models used)	                	            
-# [ ] Save inference report (what models used and time metrics)
-# [ ] Save ROC curve for different confidence thresholds (requires labeled data though)	                    
-# [x] Save UMAP visualization	            
-# [x] Save silhouette scores	            
-# [x] Save elbow method plot	            
-# [X] Add autolabel class (like in Deepbee to correct model's prediction) (input: dict of possibilities (name1,name2,etc...,others)) !!!
-
 # ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 class AnnotatedImageExporter(WorkerSink):
     def __init__(self, name):
@@ -413,7 +393,7 @@ class TrainingEvaluator(WorkerSink):
 
     def process(self, data: TrainingResults):
         df = data.embeddings.embeddings
-        embeddings = np.vstack(df[ExportKeys.EMBEDDING.value].values)
+        embeddings = np.vstack(df[ExportKeys.EMBEDDING_NORMALIZED.value].values)
         
         for trained_model in data.models:
             # here i do some primary checks whether i can actually plot 
