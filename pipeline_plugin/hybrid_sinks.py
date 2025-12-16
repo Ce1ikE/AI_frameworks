@@ -43,7 +43,7 @@ class DimensionalityVisualizer(PipelineSink,WorkerSink):
             for df_path in self.pipeline_storage.pipeline_ctx.get(PipelineKeys.AGGREGATED_RECORDS, []):
                 df: pd.DataFrame = pd.read_parquet(df_path)
                 df.info()
-                embeddings = np.vstack(df[ExportKeys.EMBEDDING.value].values)
+                embeddings = np.vstack(df[ExportKeys.EMBEDDING_NORMALIZED.value].values)
                 projections_2d = self._compute_projection(embeddings,dims=2,method=self.method)
                 projections_3d = self._compute_projection(embeddings,dims=3,method=self.method)
 
@@ -71,7 +71,7 @@ class DimensionalityVisualizer(PipelineSink,WorkerSink):
         if isinstance(data,TrainingResults):
             df = data.embeddings.embeddings
             df.info()
-            embeddings = np.vstack(df[ExportKeys.EMBEDDING.value])
+            embeddings = np.vstack(df[ExportKeys.EMBEDDING_NORMALIZED.value])
             projections_2d = self._compute_projection(embeddings,dims=2,method=self.method)
             projections_3d = self._compute_projection(embeddings,dims=3,method=self.method)
 

@@ -17,6 +17,7 @@ from .dataclasses import *
 from .detectors import *
 from .embedders import *
 from .classifiers import *
+from .depth_estimators import *
 
 # ////////////////////////////////////////////////////////////////////////////////////////////////////////////
 #  image -> face detection -> face embedding (extraction)
@@ -181,6 +182,32 @@ class ImageFacesEmbedder(Transformer):
             "embedder": self.embedder.__class__.__name__,
             "model": self.embedder.settings()
         }
+    
+class ImageDepthEstimator(Transformer):
+    """
+        Transformer element that estimates depth maps for images using a depth estimator
+    """
+    def __init__(self, name: str, depth_estimator: MiDaSEstimator):
+        super().__init__(name)
+        self.depth_estimator = depth_estimator
+
+    def process(self, data: ImageFaceMessage):
+        try:
+            for face in data.faces:
+                face.face_image.image = self.depth_estimator.process_image(face.face_image.image)
+        except Exception as e:
+            raise RuntimeError(f"Failed to estimate depth map: {e}")
+
+        return ImageFaceMessage(
+            faces=data.faces,
+            original_image=data.original_image,
+        )
+    
+    def settings(self):
+        return {
+            "depth_estimator": self.depth_estimator.__class__.__name__,
+            "model": self.depth_estimator.settings()
+        }
 
 # ////////////////////////////////////////////////////////////////////////////////////////////////////////////
 # Transformers for embeddings -> training a classifier 
@@ -228,15 +255,7 @@ class EmbeddingTrainer(Transformer):
 
         key = ExportKeys.EMBEDDING_NORMALIZED.value
         if key not in df.columns:
-            print("Normalizing embeddings...")
-            # (N, D) matrix
-            raw_embeddings = np.vstack(df[ExportKeys.EMBEDDING.value].values)
-            norms = np.linalg.norm(raw_embeddings, axis=1, keepdims=True)
-            norms[norms == 0] = 1e-10  # avoid divide by zero
-            normalized = raw_embeddings / norms
-            df[key] = list(normalized)
-            df[ExportKeys.EMBEDDING.value] = list(normalized)
-            embeddings = normalized
+            raise ValueError("Normalized embeddings not found in dataframe for training")
         else:
             print("Found normalized embeddings in dataframe.")
             embeddings = np.vstack(df[key].values)
