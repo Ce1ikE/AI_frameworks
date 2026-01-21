@@ -1,3 +1,5 @@
+import time
+from uniface import face_alignment
 
 from lib.py4MLP.core.pipeline import *
 from lib.py4MLP.py4MLP import Py4MLP 
@@ -183,23 +185,22 @@ def inference_pipeline(
 
 
 def streaming_pipeline(cluster_centers):
-    from uniface import face_alignment
-    import time
+    """Real-time face detection, embedding, and classification pipeline using webcam."""
 
-    prev_frame_time = 0
-    new_frame_time = 0
     detector = RetinaFaceDetector(
         model_dir=Py4MLP.paths.models,
         model_name=RetinaFaceWeights.RESNET18,
         confidence_threshold=0.8,
         device="cuda",
         nms_threshold=0.5
-    )    
+    )
+    
     embedder = ArcFaceEmbedder(
         model_dir=Py4MLP.paths.models,
         model_name=ArcFaceWeights.RESNET50,
         device="cuda"
     )
+    
     classifier = MetricClassifier(
         cluster_centers=cluster_centers,
         metric=Metric.EUCLIDEAN
@@ -214,28 +215,37 @@ def streaming_pipeline(cluster_centers):
     if path_to_video.is_file():
         path_to_video.unlink()
 
-    frame_width = int(cap.get(3))
-    frame_height = int(cap.get(4))
+    frame_width = int(cap.get(cv2.CAP_PROP_FRAME_WIDTH))
+    frame_height = int(cap.get(cv2.CAP_PROP_FRAME_HEIGHT))
     fps = cap.get(cv2.CAP_PROP_FPS)
-    fourcc = cv2.VideoWriter.fourcc(c1='M',c2='P',c3='4',c4='V')
-    isColor = True
-    out = cv2.VideoWriter(path_to_video.as_posix(), fourcc, fps, (frame_width, frame_height),isColor)
+    fourcc = cv2.VideoWriter.fourcc('M', 'P', '4', 'V')
+    out = cv2.VideoWriter(
+        path_to_video.as_posix(),
+        fourcc,
+        fps,
+        (frame_width, frame_height),
+        True
+    )
+
+    prev_frame_time = 0
 
     while True:
         ret, frame = cap.read()
-
         if not ret:
-            print("Can't receive frame (stream end?). Exiting ...")
+            print("Can't receive frame (stream end?). Exiting...")
             break
 
         new_frame_time = time.time()
-        bboxes, scores, landmarks = detector.detect_faces(
-            ImageMessage(
-                image=frame
-            )
-        )
-    
-        for bbox, score, landmark in zip(bboxes.astype(int),scores,landmarks.astype(int)):
+        current_fps = 1 / (new_frame_time - prev_frame_time) if prev_frame_time > 0 else 0
+        prev_frame_time = new_frame_time
+
+        bboxes, scores, landmarks = detector.detect_faces(ImageMessage(image=frame))
+
+        for bbox, score, landmark in zip(
+            bboxes.astype(int),
+            scores,
+            landmarks.astype(int)
+        ):
             x1, y1, x2, y2 = bbox
             
             if landmark is not None and len(landmark) == 5:
@@ -244,51 +254,121 @@ def streaming_pipeline(cluster_centers):
                 face = frame[y1:y2, x1:x2]
 
             embedding_face = embedder.embed_face(
-                FaceMessage(
-                    face_image=ImageMessage(
-                        image=face
-                    )
-                )
+                FaceMessage(face_image=ImageMessage(image=face))
             )
-
             prediction_label = classifier.predict(embedding_face)
+
+            box_color = (0, 255, 100)
+            box_thickness = max(2, int(min(x2 - x1, y2 - y1) / 60))
             
-            thickness = max(1, int(min(x2 - x1, y2 - y1) / 40))
-            cv2.rectangle(frame, (x1, y1), (x2, y2), (0, 255, 0), thickness)
-            label = f"{score:.2f}"
-            if label:
-                cv2.putText(
-                    frame,
-                    label,
-                    (x1, max(0, y1 - 10)),
-                    cv2.FONT_HERSHEY_SIMPLEX,
-                    0.5,
-                    (0, 255, 0),
-                    1,
-                    cv2.LINE_AA,
-                )
+            cv2.rectangle(frame, (x1, y1), (x2, y2), box_color, box_thickness)
+            
+            corner_length = min(20, (x2 - x1) // 4)
+            accent_color = (100, 255, 255) 
+            accent_thickness = box_thickness + 1
+            
+            cv2.line(frame, (x1, y1), (x1 + corner_length, y1), accent_color, accent_thickness)
+            cv2.line(frame, (x1, y1), (x1, y1 + corner_length), accent_color, accent_thickness)
+            
+            cv2.line(frame, (x2, y1), (x2 - corner_length, y1), accent_color, accent_thickness)
+            cv2.line(frame, (x2, y1), (x2, y1 + corner_length), accent_color, accent_thickness)
+            
+            cv2.line(frame, (x1, y2), (x1 + corner_length, y2), accent_color, accent_thickness)
+            cv2.line(frame, (x1, y2), (x1, y2 - corner_length), accent_color, accent_thickness)
+            
+            cv2.line(frame, (x2, y2), (x2 - corner_length, y2), accent_color, accent_thickness)
+            cv2.line(frame, (x2, y2), (x2, y2 - corner_length), accent_color, accent_thickness)
+
             if landmark is not None:
                 for (x, y) in landmark:
-                    cv2.circle(frame, (int(x), int(y)), 3, (255, 0, 0), -1)
+                    cv2.circle(frame, (int(x), int(y)), 2, (255, 100, 100), -1)
 
+            confidence_text = f"Conf: {score:.2%}"
+            identity_text = f"ID: {prediction_label}"
+            
+            font = cv2.FONT_HERSHEY_DUPLEX
+            font_scale = 0.5
+            font_thickness = 1
+            padding = 5
+
+            (conf_w, conf_h), conf_baseline = cv2.getTextSize(
+                confidence_text, font, font_scale, font_thickness
+            )
+            label_y_top = max(conf_h + padding * 2, y1 - 5)
+            
+            overlay = frame.copy()
+            cv2.rectangle(
+                overlay,
+                (x1, label_y_top - conf_h - padding * 2),
+                (x1 + conf_w + padding * 2, label_y_top),
+                (0, 0, 0),
+                -1
+            )
+            cv2.addWeighted(overlay, 0.6, frame, 0.4, 0, frame)
+            
             cv2.putText(
                 frame,
-                prediction_label,
-                (x1, min(frame.shape[0], y2 + 10)),
-                cv2.FONT_HERSHEY_SIMPLEX,
-                0.5,
-                (0, 255, 0),
-                1,
-                cv2.LINE_AA,
+                confidence_text,
+                (x1 + padding, label_y_top - padding),
+                font,
+                font_scale,
+                (255, 255, 255),
+                font_thickness,
+                cv2.LINE_AA
             )
 
-        fps = 1/(new_frame_time-prev_frame_time)
-        prev_frame_time = new_frame_time
-        fps = str(int(fps))
-        cv2.putText(frame, fps, (7, 70), cv2.FONT_HERSHEY_SIMPLEX, 3, (100, 255, 0), 3, cv2.LINE_AA)
+            (id_w, id_h), id_baseline = cv2.getTextSize(
+                identity_text, font, font_scale, font_thickness
+            )
+            label_y_bottom = min(frame.shape[0] - padding, y2 + id_h + padding * 2 + 5)
+            
+            overlay = frame.copy()
+            cv2.rectangle(
+                overlay,
+                (x1, label_y_bottom - id_h - padding * 2),
+                (x1 + id_w + padding * 2, label_y_bottom),
+                (0, 0, 0),
+                -1
+            )
+            cv2.addWeighted(overlay, 0.6, frame, 0.4, 0, frame)
+            
+            cv2.putText(
+                frame,
+                identity_text,
+                (x1 + padding, label_y_bottom - padding),
+                font,
+                font_scale,
+                accent_color,
+                font_thickness,
+                cv2.LINE_AA
+            )
+
+        fps_text = f"FPS: {int(current_fps)}"
+        (fps_w, fps_h), _ = cv2.getTextSize(
+            fps_text, cv2.FONT_HERSHEY_DUPLEX, 0.8, 2
+        )
+        
+        overlay = frame.copy()
+        cv2.rectangle(overlay, (5, 5), (fps_w + 15, fps_h + 15), (0, 0, 0), -1)
+        cv2.addWeighted(overlay, 0.6, frame, 0.4, 0, frame)
+        
+        cv2.putText(
+            frame,
+            fps_text,
+            (10, fps_h + 10),
+            cv2.FONT_HERSHEY_DUPLEX,
+            0.8,
+            (100, 255, 0),
+            2,
+            cv2.LINE_AA
+        )
+
         out.write(frame)
-        cv2.imshow('frame', frame)
+        cv2.imshow('Face Recognition - Press Q to quit', frame)
+        
         if cv2.waitKey(1) == ord('q'):
             break
+
     cap.release()
+    out.release()
     cv2.destroyAllWindows()
